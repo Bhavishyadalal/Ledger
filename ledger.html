@@ -1614,10 +1614,17 @@
     .streak-chip{ padding: 5px 8px; }
     .topbar-right{ gap: 4px; }
     .icon-btn{ width: 32px; height: 32px; }
+    /* 6 nav items in a fixed-width bar get tight on small phones —
+       shrink padding/font/icon so "Check-in" and "Settings" don't wrap. */
+    .bottom-nav{ padding: 5px; gap: 1px; }
+    .bn-btn{ padding: 8px 2px 6px; font-size: 9px; gap: 3px; }
+    .bn-btn svg{ width:17px; height:17px; }
   }
   @media (max-width: 360px){
     .offline-chip{ display: none !important; }
     .streak-chip{ padding: 5px 7px; font-size: 11px; }
+    .bn-btn{ font-size: 8.5px; padding: 8px 1px 6px; }
+    .bn-btn svg{ width:16px; height:16px; }
   }
   @media (max-width: 340px){
     .brand-text span{ display: none; }
@@ -3111,7 +3118,6 @@
       ease = Math.max(1.3, ease - 0.2);
     } else if(rating === 'good'){
       interval = Math.max(1, Math.round(interval * ease));
-      ease = ease;
     } else if(rating === 'easy'){
       interval = Math.max(1, Math.round(interval * ease * 1.3));
       ease = ease + 0.15;
@@ -4947,7 +4953,7 @@
     if(msg.role === 'user'){
       const imgs = msg.images && msg.images.length ? msg.images : (msg.image ? [msg.image] : []);
       const imgHtml = imgs.length
-        ? `<div class="doubt-msg-imgs">${imgs.map(src => `<img class="doubt-msg-img" src="${src}" alt="Attached problem photo">`).join('')}</div>`
+        ? `<div class="doubt-msg-imgs">${imgs.map(src => `<img class="doubt-msg-img" src="${escapeAttr(src)}" alt="Attached problem photo">`).join('')}</div>`
         : '';
       const textHtml = msg.content ? escapeHtml(msg.content) : '';
       return `<div class="doubt-msg user"><div class="doubt-bubble">${imgHtml}${textHtml}</div></div>`;
@@ -5601,14 +5607,14 @@
     if(exportBtn) exportBtn.onclick = () => exportFlashcardDeck(cards);
     const studyBtn = document.getElementById('fcStudyBtn');
     if(studyBtn) studyBtn.onclick = () => openFlashcardStudy(cards.some(fcIsDue) ? cards.filter(fcIsDue) : cards);
-    document.querySelectorAll('.fc-edit').forEach(btn => {
+    stage.querySelectorAll('.fc-edit').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
         const card = cards.find(c => c.id === btn.dataset.id);
         if(card) openFlashcardEditor(card);
       };
     });
-    document.querySelectorAll('.fc-del').forEach(btn => {
+    stage.querySelectorAll('.fc-del').forEach(btn => {
       btn.onclick = async (e) => {
         e.stopPropagation();
         const ok = await appConfirm({ title: 'Delete this flashcard?', body: 'This cannot be undone.', okLabel: 'Delete', danger: true });
