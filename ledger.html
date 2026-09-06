@@ -6337,7 +6337,9 @@
 
   if('serviceWorker' in navigator){
     const swCode = `
-      const CACHE = 'ledger-shell-v1';
+      // Versioned so a redeploy actually evicts old cached shells instead of
+      // serving stale HTML forever — bump this string whenever the app ships.
+      const CACHE = 'ledger-shell-v2';
       self.addEventListener('install', (e) => {
         e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./']).catch(()=>{})));
         self.skipWaiting();
@@ -6346,15 +6348,29 @@
         e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
         self.clients.claim();
       });
+      // Network-first for navigations and HTML: always try to fetch the
+      // latest app shell, and only fall back to the cached copy if the
+      // network request fails (offline). This is what makes deploys show
+      // up immediately instead of requiring a cache-clear on every device.
       self.addEventListener('fetch', (e) => {
         if(e.request.method !== 'GET') return;
+        const isHtmlNav = e.request.mode === 'navigate' || e.request.url.endsWith('.html');
+        if(isHtmlNav){
+          e.respondWith(
+            fetch(e.request).then(res => {
+              const copy = res.clone();
+              if(res.ok) caches.open(CACHE).then(c => c.put(e.request, copy));
+              return res;
+            }).catch(() => caches.match(e.request))
+          );
+          return;
+        }
+        // Non-HTML assets (fonts, etc.) can stay cache-first for speed.
         e.respondWith(
           caches.match(e.request).then(cached => {
             return cached || fetch(e.request).then(res => {
               const copy = res.clone();
-              if(res.ok && (e.request.url.endsWith('.html') || e.request.mode === 'navigate')){
-                caches.open(CACHE).then(c => c.put(e.request, copy));
-              }
+              if(res.ok) caches.open(CACHE).then(c => c.put(e.request, copy));
               return res;
             }).catch(() => cached);
           })
@@ -6363,7 +6379,20 @@
     `;
     const swBlob = new Blob([swCode], { type: 'application/javascript' });
     const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).catch(()=>{});
+    navigator.serviceWorker.register(swUrl).then(reg => {
+      // If a newer service worker takes over (i.e. this device had an
+      // older cached version), reload once so the fresh shell is actually
+      // shown instead of sitting there until the user manually refreshes.
+      if(navigator.serviceWorker.controller){
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener('statechange', () => {
+            if(nw.state === 'activated') window.location.reload();
+          });
+        });
+      }
+    }).catch(()=>{});
   }
 })();
 </script>
