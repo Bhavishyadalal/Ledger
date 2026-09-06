@@ -6896,6 +6896,13 @@
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Resizing the canvas clears its pixels. The rAF loop below would
+        // normally repaint on the next frame, but on mobile/reduced-motion
+        // that loop never starts (see isMobileFx/reduceMotion gate a few
+        // lines down) — so without this, rotating the phone or the browser
+        // chrome hiding/showing during scroll would leave the background
+        // blank until something else happened to trigger a redraw.
+        if ((reduceMotion || isMobileFx) && typeof drawBg === 'function') drawBg(0);
       }
       window.addEventListener('resize', debounce(resize, 120));
       resize();
@@ -6935,6 +6942,12 @@
         { x: 0.6, y: 0.3, r: 0.22, color: '139,92,246', speed: 0.00015, phase: 4 },
       ];
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Same touch/mobile check the particle-field and hover-fx code below
+      // already uses — pulled up here so the background-orb canvas loop can
+      // gate on it too. A drifting full-viewport gradient repainted every
+      // frame is a real, avoidable cost on phone-class hardware where the
+      // effect is barely noticeable anyway (small screen, glanced at briefly).
+      const isMobileFx = matchMedia('(hover:none), (pointer:coarse)').matches;
       // Cache the fill color per theme instead of calling getComputedStyle()
       // inside the per-frame draw loop — a style recalc 60x/sec here was a
       // real cost for zero benefit, since this value only changes on toggle.
@@ -6963,7 +6976,7 @@
           ctx.fillRect(0, 0, W, H);
         });
       }
-      if (reduceMotion) { drawBg(0); }
+      if (reduceMotion || isMobileFx) { drawBg(0); }
       else {
         function loop(t) {
           // Skip frames while the tab is hidden (matches other RAF loops in
@@ -6982,7 +6995,7 @@
       // char-split headline animation, scroll-reveal, counters.
       // All gated by reduceMotion and a device-capability "fxTier".
       // ============================================================
-      const isTouch = matchMedia('(hover:none), (pointer:coarse)').matches;
+      const isTouch = isMobileFx;
       const isSmall = window.innerWidth < 720;
       const fxTier = reduceMotion ? 'off' : (isTouch && isSmall ? 'lite' : 'full');
       document.body.dataset.fx = fxTier;
