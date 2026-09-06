@@ -4373,14 +4373,18 @@
         </div>` : ''}
       </div>` : ''}
 
+      ${logged.length >= 2 ? `
       <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">SUBJECT FOCUS THIS WEEK</div>
-      <div style="margin-bottom:26px;">${subjectRows}</div>
+      <div style="margin-bottom:26px;">${subjectRows}</div>` : ''}
 
       ${insightHtml ? `
       <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">PATTERNS WORTH KNOWING</div>
       <div style="background:#171C33;border:1px solid #262C48;border-radius:14px;padding:16px 18px;margin-bottom:26px;font-size:13.5px;line-height:1.7;color:#F1F3FA;">
         ${insightHtml.replace(/class="insight-line"/g,'style="margin-bottom:6px"')}
-      </div>` : ''}
+      </div>` : (logged.length < 2 ? `
+      <div style="background:#171C33;border:1px solid #262C48;border-radius:14px;padding:16px 18px;margin-bottom:26px;font-size:13.5px;line-height:1.6;color:#A6ACC7;">
+        Not enough check-ins yet to show patterns or subject balance — those show up once a few more days are logged this week.
+      </div>` : '')}
 
       ${recurring.length ? `
       <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">RECURRING WEAK TOPICS</div>
@@ -4415,7 +4419,11 @@
       const { jsPDF } = window.jspdf;
       const pdfWidth = 595.28; // A4 pt, portrait
       const pdfHeight = pdfWidth * (canvas.height / canvas.width);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [pdfWidth, Math.max(pdfHeight, 841.89)] });
+      // Page is sized to exactly match the rendered content — no artificial
+      // A4-height floor. Padding a short report (e.g. only 1 day logged) out
+      // to a full A4 page while drawing the image at its true, shorter
+      // height left a solid white block filling the rest of the page.
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [pdfWidth, pdfHeight] });
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       const stamp = new Date().toISOString().slice(0,10);
       pdf.save(`ledger-weekly-report-${stamp}.pdf`);
