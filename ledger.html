@@ -4,6 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Ledger — Daily Check-in</title>
+<meta name="description" content="An honest evening check-in for the NEET grind. Log discipline, practice, and one honest reflection a night — see the pattern next week.">
+
+<!-- Open Graph: controls the rich preview card WhatsApp, Instagram, -->
+<!-- Telegram, iMessage etc. build when this link is shared. Crawlers -->
+<!-- read these tags directly and never execute JS, so this can't be -->
+<!-- made dynamic per-user — it's one fixed card, like a video thumbnail. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ledger">
+<meta property="og:title" content="Ledger — Daily Check-in">
+<meta property="og:description" content="An honest evening check-in for the NEET grind. Log discipline, practice, and one honest reflection a night.">
+<meta property="og:image" content="https://ledger-zeta-nine.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Ledger — an honest evening check-in for the NEET grind">
+
+<!-- Twitter/X card (also used as a fallback by several other apps) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ledger — Daily Check-in">
+<meta name="twitter:description" content="An honest evening check-in for the NEET grind.">
+<meta name="twitter:image" content="https://ledger-zeta-nine.vercel.app/og-image.png">
+
+<!-- Favicons / app icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -1100,17 +1128,32 @@
     --purple: #D63A57; --purple-soft: rgba(214,58,87,0.12);
   }
 
-  /* Share card modal content */
+  /* Share card — designed to also work standalone as a downloaded/shared
+     image (html2canvas renders exactly this markup), not just a modal. */
   .share-card{
-    background: linear-gradient(160deg, var(--ink-2), var(--panel));
+    background:
+      repeating-linear-gradient(to bottom, transparent 0, transparent 33px, rgba(150,160,220,0.09) 33px, rgba(150,160,220,0.09) 34px),
+      linear-gradient(160deg, var(--ink-2), var(--panel));
     border: 1px solid var(--border-soft); border-radius: var(--radius-l);
-    padding: 22px 20px; text-align: left;
+    padding: 26px 24px 22px; text-align: left; position: relative; overflow: hidden;
   }
-  .share-card .sc-brand{ font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
-  .share-card .sc-date{ font-family: var(--serif); font-size: 20px; font-weight: 500; margin-bottom: 12px; letter-spacing: -0.02em; }
-  .share-card .sc-stats{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 12px; }
-  .share-card .sc-pill{ font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 100px; background: var(--panel); border: 1px solid var(--border-soft); }
-  .share-card .sc-note{ font-size: 13.5px; color: var(--text-dim); line-height: 1.5; font-style: italic; font-family: var(--serif); }
+  .share-card::before{
+    content:''; position:absolute; top:-40px; right:-40px; width:180px; height:180px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--amber) 20%, transparent), transparent 70%);
+    pointer-events:none;
+  }
+  .share-card .sc-head{ display:flex; align-items:center; gap:9px; margin-bottom: 18px; position:relative; z-index:1; }
+  .share-card .sc-mark{
+    width: 26px; height:26px; border-radius: 8px; flex-shrink:0;
+    background: linear-gradient(135deg, var(--amber), var(--teal)); position:relative;
+  }
+  .share-card .sc-mark::after{ content:''; position:absolute; inset:2px; border-radius:6px; background: var(--panel); }
+  .share-card .sc-brand{ font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
+  .share-card .sc-date{ font-family: var(--serif); font-size: 24px; font-weight: 600; margin-bottom: 14px; letter-spacing: -0.02em; position:relative; z-index:1; }
+  .share-card .sc-stats{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; position:relative; z-index:1; }
+  .share-card .sc-pill{ font-size: 13px; font-weight: 700; padding: 7px 13px; border-radius: 100px; background: var(--panel); border: 1px solid var(--border-soft); }
+  .share-card .sc-note{ font-size: 14px; color: var(--text-dim); line-height: 1.55; font-style: italic; font-family: var(--serif); position:relative; z-index:1; }
+  .share-card .sc-foot{ margin-top: 18px; font-size: 11px; color: var(--text-faint); font-weight: 600; letter-spacing: 0.03em; position:relative; z-index:1; }
 
   /* Finish pulse */
   .scorepills.finish-pop .pill{ animation: finishPop 480ms var(--ease-spring); }
@@ -4031,19 +4074,23 @@
     const dateStr = dateObj.toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'short' });
     const note = (st.mood_note || st.tomorrow_one_thing || '').trim();
     const noteLine = note ? (note.length > 140 ? note.slice(0,137)+'…' : note) : 'No reflection note.';
+    const streak = computeStreak();
     openModal(`
       <div class="share-card" id="shareCardInner">
-        <div class="sc-brand">Ledger</div>
+        <div class="sc-head"><div class="sc-mark"></div><div class="sc-brand">Ledger</div></div>
         <div class="sc-date">${escapeHtml(dateStr)}</div>
         <div class="sc-stats">
           <span class="sc-pill">Discipline: <b style="color:${discInfo.color}">${discInfo.label}</b></span>
           <span class="sc-pill">Questions: <b style="color:var(--amber)">${qCount}</b></span>
+          ${streak > 1 ? `<span class="sc-pill">Streak: <b style="color:var(--teal)">${streak} days</b></span>` : ''}
         </div>
         <div class="sc-note">${escapeHtml(noteLine)}</div>
+        <div class="sc-foot">LOGGED WITH LEDGER</div>
       </div>
-      <div class="modal-actions" style="margin-top:14px">
+      <div class="modal-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px">
         <button class="btn btn-ghost" id="modalCancel">Close</button>
-        <button class="btn btn-primary" id="shareCopy">Copy text</button>
+        <button class="btn btn-ghost" id="shareCopy">Copy text</button>
+        <button class="btn btn-primary" id="shareImg" style="flex:1;min-width:140px">${ICONS.sparkle} Share as image</button>
       </div>
     `);
     document.getElementById('modalCancel').onclick = closeModal;
@@ -4053,6 +4100,61 @@
       const b = document.getElementById('shareCopy');
       if(b){ b.textContent = 'Copied'; setTimeout(()=>{ b.textContent = 'Copy text'; }, 1200); }
     };
+    document.getElementById('shareImg').onclick = () => shareCardAsImage(dateStr);
+  }
+
+  // Renders the .share-card DOM node to a PNG (client-side, via
+  // html2canvas — loaded lazily on first use since most visits never
+  // touch this). On mobile with Web Share API + file support, this opens
+  // the native share sheet with the image attached, exactly like sharing
+  // a photo — WhatsApp/Instagram/etc. show up as direct targets. Falls
+  // back to a plain image download everywhere else (desktop, older
+  // browsers) so the feature still works, just one tap less automatic.
+  let _html2canvasLoading = null;
+  function loadHtml2Canvas(){
+    if(window.html2canvas) return Promise.resolve();
+    if(_html2canvasLoading) return _html2canvasLoading;
+    _html2canvasLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load image renderer — check your connection'));
+      document.head.appendChild(s);
+    });
+    return _html2canvasLoading;
+  }
+  async function shareCardAsImage(dateStr){
+    const btn = document.getElementById('shareImg');
+    const card = document.getElementById('shareCardInner');
+    if(!card) return;
+    const originalLabel = btn ? btn.innerHTML : '';
+    if(btn){ btn.disabled = true; btn.innerHTML = `<span class="ai-coach-spin">${ICONS.sparkle}</span> Rendering…`; }
+    try{
+      await loadHtml2Canvas();
+      const canvas = await window.html2canvas(card, {
+        backgroundColor: getComputedStyle(document.body).getPropertyValue('--ink').trim() || '#0B0E1A',
+        scale: Math.min(window.devicePixelRatio || 2, 3)
+      });
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      if(!blob) throw new Error('Could not generate image');
+      const fileName = `ledger-${dateStr.replace(/[^\w]+/g,'-').toLowerCase()}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        await navigator.share({ files: [file], title: 'Ledger', text: `Ledger — ${dateStr}` });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('Image saved — attach it in WhatsApp/Instagram');
+      }
+    }catch(err){
+      if(err && err.name === 'AbortError'){ /* user cancelled the share sheet — not an error */ }
+      else showToast(err.message || 'Could not create image');
+    }finally{
+      if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+    }
   }
 
   function renderTrends(){
