@@ -67,6 +67,10 @@
 
   *{ box-sizing: border-box; }
   html,body{ height:100%; }
+  html{ scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior: auto; }
+  }
   body{
     margin:0;
     background: var(--ink);
@@ -75,6 +79,8 @@
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     position: relative;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
     transition: background 280ms var(--ease-out), color 280ms var(--ease-out);
   }
 
@@ -201,6 +207,10 @@
   }
 
   .stage{ flex:1; display:flex; flex-direction: column; padding: 14px 0 20px; position: relative; min-height: 0; }
+  .stage.stage-leaving > *{
+    animation: stageOut 130ms var(--ease-out) forwards;
+  }
+  @keyframes stageOut{ from{ opacity:1; transform: translateY(0); } to{ opacity:0; transform: translateY(-6px); } }
   .qwrap, .view-wrap{ animation: rise 440ms var(--ease-out); }
   @keyframes rise{ from{ opacity:0; transform: translateY(14px); } to{ opacity:1; transform: translateY(0); } }
   .qwrap.leaving{ animation: fall 190ms cubic-bezier(.4,0,1,1) forwards; }
@@ -2567,6 +2577,29 @@
   function showProgress(show){
     progressTrack.style.display = show ? 'block' : 'none';
   }
+
+  // Whole-screen transition helper: fades the outgoing stage content out
+  // briefly, resets scroll to the top, then hands off to the given render
+  // function — which already wraps its content in .view-wrap (rise-in
+  // animation). Without this, stage.innerHTML swaps were an instant hard
+  // cut with no exit, and switching screens could leave you scrolled to
+  // wherever the previous screen happened to be.
+  const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function transitionToView(renderFn){
+    const prevHadContent = stage.children.length > 0;
+    if(reduceMotionMQ.matches || !prevHadContent){
+      window.scrollTo(0, 0);
+      renderFn();
+      return;
+    }
+    stage.classList.add('stage-leaving');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    setTimeout(() => {
+      renderFn();
+      stage.classList.remove('stage-leaving');
+    }, 130);
+  }
+
   function goView(view, opts){
     currentView = view;
     setBottomNav(view === 'checkin' ? 'checkin' : view);
@@ -2579,25 +2612,27 @@
       view === 'settings' ? 'Settings' :
       view === 'home' ? 'Home' : 'Check-in';
 
-    if(view === 'home') renderHome();
-    else if(view === 'checkin'){
-      if(opts && opts.edit){
-        checkinMode = 'edit';
-        editDateKey = opts.dateKey;
-        state = Object.assign({}, opts.state || {});
-        idx = 0;
-      } else {
-        checkinMode = 'new';
-        editDateKey = null;
-        state = {};
-        idx = 0;
+    transitionToView(() => {
+      if(view === 'home') renderHome();
+      else if(view === 'checkin'){
+        if(opts && opts.edit){
+          checkinMode = 'edit';
+          editDateKey = opts.dateKey;
+          state = Object.assign({}, opts.state || {});
+          idx = 0;
+        } else {
+          checkinMode = 'new';
+          editDateKey = null;
+          state = {};
+          idx = 0;
+        }
+        renderWelcomeCheckin();
       }
-      renderWelcomeCheckin();
-    }
     else if(view === 'trends') renderTrends();
     else if(view === 'weekly') renderWeekly();
     else if(view === 'monthly') renderMonthly();
     else if(view === 'settings') renderSettings();
+    });
   }
 
   document.getElementById('brandHome').addEventListener('click', () => goView('home'));
