@@ -6135,57 +6135,148 @@
   // the PIN form, or any write UI.
   async function boot_MentorView(token){
     document.body.innerHTML = `
-      <div style="min-height:100vh;background:#0B0E1A;color:#F1F3FA;font-family:'Manrope',system-ui,sans-serif;padding:24px 18px;">
-        <div id="mentorViewRoot" style="max-width:640px;margin:0 auto;">
-          <div style="text-align:center;padding:60px 0;color:#A6ACC7;">Loading report…</div>
+      <div style="min-height:100vh;background:var(--ink);padding:28px 18px 60px;">
+        <div id="mentorViewRoot" style="max-width:720px;margin:0 auto;">
+          <div style="text-align:center;padding:80px 0;color:var(--text-faint);font-family:var(--sans, 'Manrope', sans-serif);">Loading report…</div>
         </div>
       </div>`;
     const root = document.getElementById('mentorViewRoot');
     try{
       const { data, error } = await sb.rpc('get_checkins_by_token', { p_token: token, p_days: 7 });
       if(error) throw new Error(error.message || 'This link is invalid or has been revoked.');
-      const rows = data || [];
+      const rows = (data || []).slice().sort((a,b) => a.date_key < b.date_key ? 1 : -1); // newest first
       const name = rows.length ? rows[0].username : 'Student';
       const generated = new Date().toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+      const discColor = cls => cls === 'strong' ? 'var(--teal)' : cls === 'mixed' ? 'var(--amber)' : cls === 'rough' ? 'var(--danger)' : 'var(--text-faint)';
+
+      // ---- derived stats, same substance as the weekly PDF ----
+      const daysLogged = rows.length;
+      const totalQ = rows.reduce((s,r) => s + ((r.payload && r.payload.questionsSolved) || 0), 0);
+      const avgQ = daysLogged ? Math.round(totalQ / daysLogged) : 0;
+      const strongDays = rows.filter(r => r.payload && r.payload.disciplineCls === 'strong').length;
+      let best = null, worst = null;
+      rows.forEach(r => {
+        const q = (r.payload && r.payload.questionsSolved) || 0;
+        if(!best || q > ((best.payload&&best.payload.questionsSolved)||0)) best = r;
+        if(!worst || q < ((worst.payload&&worst.payload.questionsSolved)||0)) worst = r;
+      });
+      const subjectCounts = { Physics:0, Chemistry:0, Biology:0 };
+      rows.forEach(r => {
+        const s = (r.payload && r.payload.state && r.payload.state.subject_focus) || '';
+        if(subjectCounts[s] !== undefined) subjectCounts[s]++;
+      });
+      const subjTotal = Object.values(subjectCounts).reduce((a,b)=>a+b,0) || 1;
+      const topicCounts = {};
+      rows.forEach(r => {
+        const t = ((r.payload && r.payload.weakTopic) || '').trim();
+        if(t) topicCounts[t] = (topicCounts[t]||0) + 1;
+      });
+      const recurring = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]);
+      const subjectColors = { Physics:'#5B8CFF', Chemistry:'var(--teal)', Biology:'var(--purple)' };
+
       const rowsHtml = rows.length ? rows.map(r => {
         const p = r.payload || {};
         return `<tr>
-          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(r.date_label || r.date_key)}</td>
-          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.disciplineLabel || '—')}</td>
-          <td style="padding:10px;border-bottom:1px solid #262C48;">${p.questionsSolved||0}</td>
-          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.accuracyBand || '—')}</td>
-          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.weakTopic || '—')}</td>
+          <td style="padding:12px 10px;border-bottom:1px solid var(--border-soft);font-weight:650;">${escapeHtml(r.date_label || r.date_key)}</td>
+          <td style="padding:12px 10px;border-bottom:1px solid var(--border-soft);"><span style="color:${discColor(p.disciplineCls)};font-weight:700;">${escapeHtml(p.disciplineLabel || '—')}</span></td>
+          <td style="padding:12px 10px;border-bottom:1px solid var(--border-soft);font-family:var(--mono);">${p.questionsSolved||0}</td>
+          <td style="padding:12px 10px;border-bottom:1px solid var(--border-soft);color:var(--text-dim);">${escapeHtml(p.accuracyBand || '—')}</td>
+          <td style="padding:12px 10px;border-bottom:1px solid var(--border-soft);color:var(--text-dim);">${escapeHtml(p.weakTopic || '—')}</td>
         </tr>`;
-      }).join('') : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#6B7295;">No check-ins logged in the last 7 days.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" style="padding:26px;text-align:center;color:var(--text-faint);">No check-ins logged in the last 7 days.</td></tr>`;
+
+      const subjectRows = daysLogged >= 2 ? `
+        <div style="background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:18px 20px;margin-bottom:22px;box-shadow:var(--shadow-sm);">
+          <div style="font-size:11px;color:var(--text-faint);font-weight:800;letter-spacing:0.05em;margin-bottom:14px;">SUBJECT FOCUS THIS WEEK</div>
+          ${['Physics','Chemistry','Biology'].map(s => {
+            const c = subjectCounts[s] || 0;
+            const pct = Math.round(100*c/subjTotal);
+            return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+              <span style="width:70px;flex-shrink:0;font-size:13px;font-weight:650;">${s}</span>
+              <div style="flex:1;height:8px;border-radius:100px;background:var(--panel-2);overflow:hidden;"><div style="height:100%;width:${pct}%;background:${subjectColors[s]};border-radius:100px;"></div></div>
+              <span style="width:56px;text-align:right;flex-shrink:0;font-size:12px;color:var(--text-faint);font-weight:600;">${c} day${c===1?'':'s'}</span>
+            </div>`;
+          }).join('')}
+        </div>` : '';
+
+      const bestWorstRow = (best || (worst && worst !== best)) ? `
+        <div style="display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap;">
+          ${best ? `<div style="flex:1;min-width:200px;background:color-mix(in srgb, var(--teal) 10%, transparent);border:1px solid color-mix(in srgb, var(--teal) 30%, transparent);border-radius:var(--radius-m);padding:16px 18px;">
+            <div style="font-size:11px;color:var(--teal);font-weight:800;letter-spacing:0.04em;margin-bottom:6px;">BEST DAY</div>
+            <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;">${escapeHtml(best.date_label || best.date_key)}</div>
+            <div style="font-size:13px;color:var(--text-dim);margin-top:2px;">${(best.payload&&best.payload.questionsSolved)||0} questions · ${escapeHtml((best.payload&&best.payload.disciplineLabel)||'—')}</div>
+          </div>` : ''}
+          ${worst && worst !== best ? `<div style="flex:1;min-width:200px;background:color-mix(in srgb, var(--danger) 8%, transparent);border:1px solid color-mix(in srgb, var(--danger) 25%, transparent);border-radius:var(--radius-m);padding:16px 18px;">
+            <div style="font-size:11px;color:var(--danger);font-weight:800;letter-spacing:0.04em;margin-bottom:6px;">LIGHTEST DAY</div>
+            <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;">${escapeHtml(worst.date_label || worst.date_key)}</div>
+            <div style="font-size:13px;color:var(--text-dim);margin-top:2px;">${(worst.payload&&worst.payload.questionsSolved)||0} questions · ${escapeHtml((worst.payload&&worst.payload.disciplineLabel)||'—')}</div>
+          </div>` : ''}
+        </div>` : '';
+
+      const recurringHtml = recurring.length ? `
+        <div style="margin-bottom:22px;">
+          <div style="font-size:11px;color:var(--text-faint);font-weight:800;letter-spacing:0.05em;margin-bottom:12px;">RECURRING WEAK TOPICS</div>
+          ${recurring.map(([topic,count]) => `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:12px 16px;margin-bottom:8px;font-size:13.5px;box-shadow:var(--shadow-sm);">
+            <span><span style="color:var(--purple);">●</span>&nbsp; ${escapeHtml(topic)}</span>
+            ${count > 1 ? `<span style="color:var(--text-faint);font-family:var(--mono);font-size:12px;">×${count}</span>` : ''}
+          </div>`).join('')}
+        </div>` : '';
 
       root.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F2617A,#2FD98A);"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--amber),var(--teal));position:relative;flex-shrink:0;">
+            <div style="position:absolute;inset:3px;border-radius:8px;background:var(--ink);"></div>
+          </div>
           <div>
-            <div style="font-size:14px;font-weight:800;">LEDGER</div>
-            <div style="font-size:11px;color:#A6ACC7;font-weight:600;">Read-only mentor view</div>
+            <div style="font-size:15px;font-weight:800;letter-spacing:0.02em;color:var(--text);">LEDGER</div>
+            <div style="font-size:12px;color:var(--text-faint);font-weight:600;">Read-only mentor view</div>
           </div>
         </div>
-        <div style="font-family:'Fraunces',Georgia,serif;font-size:28px;font-weight:600;margin-bottom:4px;">${escapeHtml(name)}</div>
-        <div style="font-size:13px;color:#A6ACC7;margin-bottom:22px;">Last 7 days · generated ${escapeHtml(generated)}</div>
-        <div style="overflow-x:auto;">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;background:#171C33;border:1px solid #262C48;border-radius:12px;overflow:hidden;">
-            <thead><tr style="background:#12162A;">
-              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">DAY</th>
-              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">DISCIPLINE</th>
-              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">QUESTIONS</th>
-              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">ACCURACY</th>
-              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">WEAK TOPIC</th>
+
+        <div style="font-family:'Fraunces',Georgia,serif;font-size:32px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px;color:var(--text);">${escapeHtml(name)}</div>
+        <div style="font-size:13.5px;color:var(--text-faint);font-weight:600;margin-bottom:24px;">Last 7 days · generated ${escapeHtml(generated)}</div>
+
+        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:100px;background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:16px;text-align:center;box-shadow:var(--shadow-sm);">
+            <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--text);">${daysLogged}/7</div>
+            <div style="font-size:10.5px;color:var(--text-faint);font-weight:700;letter-spacing:0.03em;margin-top:4px;">DAYS LOGGED</div>
+          </div>
+          <div style="flex:1;min-width:100px;background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:16px;text-align:center;box-shadow:var(--shadow-sm);">
+            <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--text);">${avgQ}</div>
+            <div style="font-size:10.5px;color:var(--text-faint);font-weight:700;letter-spacing:0.03em;margin-top:4px;">AVG QUESTIONS/DAY</div>
+          </div>
+          <div style="flex:1;min-width:100px;background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:16px;text-align:center;box-shadow:var(--shadow-sm);">
+            <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--text);">${strongDays}</div>
+            <div style="font-size:10.5px;color:var(--text-faint);font-weight:700;letter-spacing:0.03em;margin-top:4px;">STRONG DAYS</div>
+          </div>
+        </div>
+
+        ${bestWorstRow}
+        ${subjectRows}
+
+        <div style="font-size:11px;color:var(--text-faint);font-weight:800;letter-spacing:0.05em;margin-bottom:12px;">DAY BY DAY</div>
+        <div style="overflow-x:auto;margin-bottom:22px;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);overflow:hidden;box-shadow:var(--shadow-sm);">
+            <thead><tr style="background:var(--panel-2);">
+              <th style="padding:10px;text-align:left;color:var(--text-faint);font-size:10.5px;font-weight:800;letter-spacing:0.03em;">DAY</th>
+              <th style="padding:10px;text-align:left;color:var(--text-faint);font-size:10.5px;font-weight:800;letter-spacing:0.03em;">DISCIPLINE</th>
+              <th style="padding:10px;text-align:left;color:var(--text-faint);font-size:10.5px;font-weight:800;letter-spacing:0.03em;">QUESTIONS</th>
+              <th style="padding:10px;text-align:left;color:var(--text-faint);font-size:10.5px;font-weight:800;letter-spacing:0.03em;">ACCURACY</th>
+              <th style="padding:10px;text-align:left;color:var(--text-faint);font-size:10.5px;font-weight:800;letter-spacing:0.03em;">WEAK TOPIC</th>
             </tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
         </div>
-        <div style="text-align:center;margin-top:30px;font-size:11px;color:#6B7295;font-style:italic;">This link is read-only and cannot edit or view PIN/account data.</div>
+
+        ${recurringHtml}
+
+        <div style="text-align:center;margin-top:30px;padding-top:18px;border-top:1px solid var(--border-soft);font-size:11.5px;color:var(--text-faint);font-style:italic;">This link is read-only and cannot edit or view PIN/account data.</div>
       `;
     }catch(err){
-      root.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#A6ACC7;">
-        <div style="font-size:15px;font-weight:700;color:#FF5566;margin-bottom:8px;">Link not available</div>
-        <div style="font-size:13px;">${escapeHtml(err.message || 'This link is invalid or has been revoked.')}</div>
+      root.innerHTML = `<div style="text-align:center;padding:80px 20px;color:var(--text-dim);font-family:var(--sans, 'Manrope', sans-serif);">
+        <div style="font-size:16px;font-weight:800;color:var(--danger);margin-bottom:10px;">Link not available</div>
+        <div style="font-size:13.5px;">${escapeHtml(err.message || 'This link is invalid or has been revoked.')}</div>
       </div>`;
     }
   }
