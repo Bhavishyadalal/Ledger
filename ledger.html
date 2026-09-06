@@ -246,6 +246,14 @@
       border: 1px solid var(--glass-border);
       border-radius: 20px;
       box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+      /* This bar is sticky and blurred, so it re-samples everything
+       scrolling underneath it on every frame. Promoting it to its own
+       compositor layer means the browser blurs once per frame instead of
+       re-flattening it with the rest of the page's paint tree each time —
+       the standard fix for sticky/fixed glass panels feeling laggy during
+       scroll. Pure perf hint, no visual change. */
+      will-change: transform;
+      transform: translateZ(0);
     }
 
     .brand {
@@ -3155,7 +3163,12 @@
       position: fixed;
       bottom: 14px;
       left: 50%;
-      transform: translateX(-50%);
+      /* translateZ(0) folded in alongside the existing centering transform
+       promotes this fixed, blurred bar to its own compositor layer — same
+       scroll-perf fix as .topbar, done in one transform so it doesn't
+       clobber the translateX(-50%) centering. */
+      transform: translateX(-50%) translateZ(0);
+      will-change: transform;
       width: min(560px, calc(100% - 24px));
       padding: 6px;
       background: var(--glass-bg);
@@ -6900,10 +6913,20 @@
         { x: 0.6, y: 0.3, r: 0.22, color: '139,92,246', speed: 0.00015, phase: 4 },
       ];
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Cache the fill color per theme instead of calling getComputedStyle()
+      // inside the per-frame draw loop — a style recalc 60x/sec here was a
+      // real cost for zero benefit, since this value only changes on toggle.
+      let _bgFillCache = '#07090E';
+      function refreshBgFillCache() {
+        const isLight = document.body.dataset.theme === 'light';
+        const v = getComputedStyle(document.body).getPropertyValue('--bg').trim();
+        _bgFillCache = v || (isLight ? '#F8F9FD' : '#07090E');
+      }
+      refreshBgFillCache();
+      window.refreshBgFillCache = refreshBgFillCache;
       function drawBg(t) {
         ctx.clearRect(0, 0, W, H);
-        const isLight = document.body.dataset.theme === 'light';
-        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg').trim() || (isLight ? '#F8F9FD' : '#07090E');
+        ctx.fillStyle = _bgFillCache;
         ctx.fillRect(0, 0, W, H);
         orbs.forEach(o => {
           const dx = Math.sin(t * o.speed + o.phase) * 0.12;
@@ -7004,6 +7027,10 @@
           setTimeout(() => { aura.style.width = '420px'; aura.style.height = '420px'; }, 180);
         });
         function follow() {
+          // Match the other persistent RAF loops: skip the work while the
+          // tab is hidden instead of burning battery animating an aura
+          // nobody can see.
+          if (document.hidden) { requestAnimationFrame(follow); return; }
           cx += (tx - cx) * 0.09; cy += (ty - cy) * 0.09;
           aura.style.transform = `translate(${cx}px, ${cy}px) translate(-50%,-50%)`;
           requestAnimationFrame(follow);
@@ -7053,6 +7080,7 @@
         // Only the ring needs an animation loop — it eases toward the pointer
         // for the trailing feel; the dot is positioned directly on move above.
         function followRing() {
+          if (document.hidden) { requestAnimationFrame(followRing); return; }
           rx += (tx - rx) * 0.22; ry += (ty - ry) * 0.22;
           ring.style.transform = `translate(${rx}px, ${ry}px) translate(-50%,-50%)`;
           requestAnimationFrame(followRing);
@@ -7177,12 +7205,17 @@
         if (fxTier !== 'full' || isTouch) return;
         strength = strength || 10;
         el.classList.add('magnetic');
+        // Same fix as attachRipple: cache the rect on enter instead of
+        // measuring it on every pointermove pixel.
+        let r = null;
+        el.addEventListener('pointerenter', () => { r = el.getBoundingClientRect(); }, { passive: true });
+        window.addEventListener('resize', () => { r = null; }, { passive: true });
         el.addEventListener('pointermove', (e) => {
-          const r = el.getBoundingClientRect();
+          if (!r) r = el.getBoundingClientRect();
           const mx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
           const my = (e.clientY - r.top - r.height / 2) / (r.height / 2);
           el.style.transform = `translate(${(mx * strength).toFixed(1)}px, ${(my * strength * 0.6).toFixed(1)}px)`;
-        });
+        }, { passive: true });
         el.addEventListener('pointerleave', () => { el.style.transform = ''; });
       }
       function attachMagneticAll(selector, root, strength) {
@@ -7190,8 +7223,17 @@
       }
 
       function attachRipple(el) {
+        // Cache the element's rect on hover-enter rather than re-measuring
+        // with getBoundingClientRect() on every pointermove pixel — that was
+        // forcing a synchronous layout read dozens of times a second per
+        // hovered button, which fights the compositor during scroll/interaction.
+        // Buttons don't move/resize mid-hover, so one measurement per hover
+        // session (plus a resize-triggered invalidation) is enough.
+        let cachedRect = null;
+        el.addEventListener('pointerenter', () => { cachedRect = el.getBoundingClientRect(); }, { passive: true });
+        window.addEventListener('resize', () => { cachedRect = null; }, { passive: true });
         el.addEventListener('pointerdown', (e) => {
-          const rect = el.getBoundingClientRect();
+          const rect = cachedRect || el.getBoundingClientRect();
           const ripple = document.createElement('span');
           ripple.className = 'ripple';
           const size = Math.max(rect.width, rect.height) * 1.2;
@@ -7200,12 +7242,12 @@
           ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
           el.appendChild(ripple);
           setTimeout(() => ripple.remove(), 600);
-        });
+        }, { passive: true });
         el.addEventListener('pointermove', (e) => {
-          const rect = el.getBoundingClientRect();
+          const rect = cachedRect || (cachedRect = el.getBoundingClientRect());
           el.style.setProperty('--mx', ((e.clientX - rect.left) / rect.width * 100) + '%');
           el.style.setProperty('--my', ((e.clientY - rect.top) / rect.height * 100) + '%');
-        });
+        }, { passive: true });
       }
       function escapeHtml(str) {
         return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -7336,6 +7378,7 @@
           themeMeta.content = settings.theme === 'light' ? '#F8F9FD' : '#07090E';
         }
         if (window.refreshAccentAwareColors) refreshAccentAwareColors();
+        if (window.refreshBgFillCache) refreshBgFillCache();
       }
       applyTheme(settings.theme);
       document.body.dataset.density = settings.density === 'compact' ? 'compact' : 'comfortable';
