@@ -4270,6 +4270,34 @@
     return _jsPdfLoading;
   }
 
+  // Lazy-loaded QR generator — same pattern as html2canvas/jsPDF above.
+  // Used to stamp a scannable link on the weekly PDF (mentor link if the
+  // student has one set up, otherwise the live app URL).
+  let _qrLoading = null;
+  function loadQr(){
+    if(window.QRCode) return Promise.resolve();
+    if(_qrLoading) return _qrLoading;
+    _qrLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load QR renderer — check your connection'));
+      document.head.appendChild(s);
+    });
+    return _qrLoading;
+  }
+  const LIVE_APP_URL = 'https://ledger-zeta-nine.vercel.app';
+  // Returns the URL the PDF's QR code should point to: the student's
+  // mentor view link if they've generated one, else the plain app URL.
+  function getPdfQrTarget(){
+    try{
+      const auth = (typeof loadAuth === 'function') ? loadAuth() : null;
+      const cached = auth && auth.userId ? localStorage.getItem('mentorToken:' + auth.userId) : null;
+      if(cached) return LIVE_APP_URL + '/?mentor=' + encodeURIComponent(cached);
+    }catch(e){}
+    return LIVE_APP_URL;
+  }
+
   function buildWeeklyReportHtml(ctx){
     const { days, logged, avgQ, strong, best, worst, subjectCounts, subjTotal, insightHtml } = ctx;
     const auth = (typeof loadAuth === 'function') ? loadAuth() : null;
@@ -4395,9 +4423,12 @@
         </div>`).join('')}
       </div>` : ''}
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;padding-top:18px;border-top:1px solid #262C48;font-size:11px;color:#6B7295;font-weight:600;">
-        <span>Generated ${escapeHtml(generated)}</span>
-        <span style="font-style:italic;">Logged with Ledger</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;padding-top:18px;border-top:1px solid #262C48;font-size:11px;color:#6B7295;font-weight:600;">
+        <div>
+          <div>Generated ${escapeHtml(generated)}</div>
+          <div style="font-style:italic;margin-top:2px;">Logged with Ledger</div>
+        </div>
+        <div id="wrQrSlot" style="width:74px;height:74px;display:flex;align-items:center;justify-content:center;"></div>
       </div>
     </div>`;
   }
@@ -4412,8 +4443,22 @@
     host.innerHTML = buildWeeklyReportHtml(ctx);
     document.body.appendChild(host);
     try{
-      await Promise.all([loadHtml2Canvas(), loadJsPdf()]);
+      await Promise.all([loadHtml2Canvas(), loadJsPdf(), loadQr()]);
       const sheet = document.getElementById('weeklyReportSheet');
+      // Stamp a QR code into the footer slot — links to the mentor view
+      // if one exists, otherwise the live app, so a printed page can be
+      // scanned straight into the app.
+      try{
+        const qrSlot = document.getElementById('wrQrSlot');
+        if(qrSlot && window.QRCode){
+          const qrCanvas = document.createElement('canvas');
+          await window.QRCode.toCanvas(qrCanvas, getPdfQrTarget(), {
+            width: 74, margin: 0,
+            color: { dark: '#F1F3FA', light: '#0B0E1A' }
+          });
+          qrSlot.appendChild(qrCanvas);
+        }
+      }catch(qrErr){ /* non-fatal — PDF still builds without the QR */ }
       const canvas = await window.html2canvas(sheet, { backgroundColor: '#0B0E1A', scale: 2 });
       const imgData = canvas.toDataURL('image/png');
       const { jsPDF } = window.jspdf;
@@ -4850,6 +4895,8 @@
         <div class="settings-section" id="accountSection">
           <h3>Account & sync</h3>
         </div>
+
+        <div class="settings-section" id="mentorSection"></div>
 
         <div class="settings-section" id="mockSection">
           <h3>Mock tests</h3>
@@ -6011,6 +6058,202 @@
       };
     }
   };
+
+  // ========== Mentor / parent view link ==========
+  // A read-only public link a student can hand to a parent or mentor.
+  // The token maps server-side (via mentor-link-setup.sql) to their
+  // userId — the link itself carries no PIN, no auth, no write access.
+  function mentorTokenCacheKey(userId){ return 'mentorToken:' + userId; }
+  function getCachedMentorToken(userId){
+    try{ return localStorage.getItem(mentorTokenCacheKey(userId)); }catch(e){ return null; }
+  }
+  function setCachedMentorToken(userId, token){
+    try{ localStorage.setItem(mentorTokenCacheKey(userId), token); }catch(e){}
+  }
+  function mentorLinkUrl(token){
+    return LIVE_APP_URL + '/?mentor=' + encodeURIComponent(token);
+  }
+
+  const _origRenderSettings2 = renderSettings;
+  renderSettings = function(){
+    _origRenderSettings2();
+    const section = document.getElementById('mentorSection');
+    if(!section) return;
+    const auth = loadAuth();
+    if(!auth || !auth.userId){
+      section.innerHTML = `
+        <h3>Mentor / parent view</h3>
+        <p class="section-sub">Sign in to generate a read-only link a parent or mentor can open — no PIN, no edit access, just this week's report.</p>
+      `;
+      return;
+    }
+    const cached = getCachedMentorToken(auth.userId);
+    section.innerHTML = `
+      <h3>Mentor / parent view</h3>
+      <p class="section-sub" style="margin-bottom:10px">A read-only link showing this week's check-ins — safe to share, no PIN or edit access.</p>
+      <div id="mentorLinkBody">${cached ? mentorLinkBodyHtml(cached) : `
+        <div class="navrow"><button class="btn btn-primary" id="doGenMentorLink" style="flex:1">Generate mentor link</button></div>
+      `}</div>
+    `;
+    wireMentorSection(auth.userId);
+  };
+
+  function mentorLinkBodyHtml(token){
+    const url = mentorLinkUrl(token);
+    return `
+      <div class="auth-account-chip" style="align-items:flex-start;flex-direction:column;gap:8px;">
+        <div style="font-size:12px;color:var(--text-faint);word-break:break-all;font-family:'JetBrains Mono',monospace;">${escapeHtml(url)}</div>
+        <div id="mentorQrWrap" style="width:120px;height:120px;background:#fff;border-radius:10px;padding:8px;display:flex;align-items:center;justify-content:center;"></div>
+      </div>
+      <div class="navrow" style="margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="doCopyMentorLink">Copy link</button>
+        <button class="btn btn-ghost" id="doRegenMentorLink">Regenerate (revokes old link)</button>
+      </div>
+    `;
+  }
+
+  function wireMentorSection(userId){
+    const genBtn = document.getElementById('doGenMentorLink');
+    if(genBtn){
+      genBtn.onclick = async () => {
+        genBtn.disabled = true; genBtn.textContent = 'Generating…';
+        try{
+          const { data, error } = await sb.rpc('get_or_create_mentor_token', { p_user_id: userId });
+          if(error) throw new Error(error.message || 'Could not generate link');
+          setCachedMentorToken(userId, data);
+          const body = document.getElementById('mentorLinkBody');
+          if(body) body.innerHTML = mentorLinkBodyHtml(data);
+          wireMentorSection(userId);
+          renderMentorQr(data);
+          showToast('Mentor link ready');
+        }catch(err){
+          showToast(err.message || 'Could not generate link');
+          genBtn.disabled = false; genBtn.textContent = 'Generate mentor link';
+        }
+      };
+      return;
+    }
+    const cached = getCachedMentorToken(userId);
+    if(cached) renderMentorQr(cached);
+    const copyBtn = document.getElementById('doCopyMentorLink');
+    if(copyBtn){
+      copyBtn.onclick = async () => {
+        const token = getCachedMentorToken(userId);
+        if(!token) return;
+        try{
+          await navigator.clipboard.writeText(mentorLinkUrl(token));
+          showToast('Link copied');
+        }catch(e){ showToast('Could not copy — long-press the link text instead'); }
+      };
+    }
+    const regenBtn = document.getElementById('doRegenMentorLink');
+    if(regenBtn){
+      regenBtn.onclick = async () => {
+        const ok = await appConfirm({
+          title: 'Regenerate mentor link?',
+          body: 'The old link will stop working immediately. Anyone using it will need the new one.',
+          okLabel: 'Regenerate',
+          danger: true
+        });
+        if(!ok) return;
+        regenBtn.disabled = true; regenBtn.textContent = 'Regenerating…';
+        try{
+          await sb.rpc('revoke_mentor_token', { p_user_id: userId });
+          const { data, error } = await sb.rpc('get_or_create_mentor_token', { p_user_id: userId });
+          if(error) throw new Error(error.message || 'Could not regenerate link');
+          setCachedMentorToken(userId, data);
+          const body = document.getElementById('mentorLinkBody');
+          if(body) body.innerHTML = mentorLinkBodyHtml(data);
+          wireMentorSection(userId);
+          renderMentorQr(data);
+          showToast('New mentor link ready');
+        }catch(err){
+          showToast(err.message || 'Could not regenerate link');
+          regenBtn.disabled = false; regenBtn.textContent = 'Regenerate (revokes old link)';
+        }
+      };
+    }
+  }
+
+  async function renderMentorQr(token){
+    const wrap = document.getElementById('mentorQrWrap');
+    if(!wrap) return;
+    try{
+      await loadQr();
+      wrap.innerHTML = '';
+      const canvas = document.createElement('canvas');
+      await window.QRCode.toCanvas(canvas, mentorLinkUrl(token), { width: 104, margin: 0 });
+      wrap.appendChild(canvas);
+    }catch(e){ wrap.textContent = 'QR unavailable'; }
+  }
+
+  // ---------- Public mentor view (read-only, no auth) ----------
+  // If the URL carries ?mentor=<token>, replace the whole app shell with
+  // a minimal read-only report instead of booting the normal check-in
+  // flow — a parent/mentor opening this link never sees the auth gate,
+  // the PIN form, or any write UI.
+  async function boot_MentorView(token){
+    document.body.innerHTML = `
+      <div style="min-height:100vh;background:#0B0E1A;color:#F1F3FA;font-family:'Manrope',system-ui,sans-serif;padding:24px 18px;">
+        <div id="mentorViewRoot" style="max-width:640px;margin:0 auto;">
+          <div style="text-align:center;padding:60px 0;color:#A6ACC7;">Loading report…</div>
+        </div>
+      </div>`;
+    const root = document.getElementById('mentorViewRoot');
+    try{
+      const { data, error } = await sb.rpc('get_checkins_by_token', { p_token: token, p_days: 7 });
+      if(error) throw new Error(error.message || 'This link is invalid or has been revoked.');
+      const rows = data || [];
+      const name = rows.length ? rows[0].username : 'Student';
+      const generated = new Date().toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      const rowsHtml = rows.length ? rows.map(r => {
+        const p = r.payload || {};
+        return `<tr>
+          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(r.date_label || r.date_key)}</td>
+          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.disciplineLabel || '—')}</td>
+          <td style="padding:10px;border-bottom:1px solid #262C48;">${p.questionsSolved||0}</td>
+          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.accuracyBand || '—')}</td>
+          <td style="padding:10px;border-bottom:1px solid #262C48;">${escapeHtml(p.weakTopic || '—')}</td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#6B7295;">No check-ins logged in the last 7 days.</td></tr>`;
+
+      root.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F2617A,#2FD98A);"></div>
+          <div>
+            <div style="font-size:14px;font-weight:800;">LEDGER</div>
+            <div style="font-size:11px;color:#A6ACC7;font-weight:600;">Read-only mentor view</div>
+          </div>
+        </div>
+        <div style="font-family:'Fraunces',Georgia,serif;font-size:28px;font-weight:600;margin-bottom:4px;">${escapeHtml(name)}</div>
+        <div style="font-size:13px;color:#A6ACC7;margin-bottom:22px;">Last 7 days · generated ${escapeHtml(generated)}</div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;background:#171C33;border:1px solid #262C48;border-radius:12px;overflow:hidden;">
+            <thead><tr style="background:#12162A;">
+              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">DAY</th>
+              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">DISCIPLINE</th>
+              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">QUESTIONS</th>
+              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">ACCURACY</th>
+              <th style="padding:10px;text-align:left;color:#6B7295;font-size:11px;">WEAK TOPIC</th>
+            </tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+        <div style="text-align:center;margin-top:30px;font-size:11px;color:#6B7295;font-style:italic;">This link is read-only and cannot edit or view PIN/account data.</div>
+      `;
+    }catch(err){
+      root.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#A6ACC7;">
+        <div style="font-size:15px;font-weight:700;color:#FF5566;margin-bottom:8px;">Link not available</div>
+        <div style="font-size:13px;">${escapeHtml(err.message || 'This link is invalid or has been revoked.')}</div>
+      </div>`;
+    }
+  }
+
+  const _mentorParam = new URLSearchParams(window.location.search).get('mentor');
+  if(_mentorParam){
+    boot_MentorView(_mentorParam);
+    return; // skip the normal app boot entirely for a mentor-view visit
+  }
 
   updateStreakChip();
   updateOfflineChip();
