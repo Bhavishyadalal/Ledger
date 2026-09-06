@@ -40,6 +40,15 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
     rel="stylesheet">
+  <!-- Deliberately NOT deferred: the main app <script> near the end of
+   body is a plain synchronous inline script (an IIFE, not wrapped in
+   DOMContentLoaded), so it runs the instant the parser reaches it and
+   uses window.supabase immediately. A deferred script is only guaranteed
+   to finish before DOMContentLoaded — not before this inline script's
+   position — so deferring here would be a race that could leave
+   window.supabase undefined on a slow connection. Left as a normal
+   blocking script, which for one small, CDN-cached library loaded early
+   in <head> is a fixed, predictable cost rather than an intermittent bug. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root,
@@ -6868,6 +6877,19 @@
       const canvas = document.getElementById('bgCanvas');
       const ctx = canvas.getContext('2d');
       let W, H, dpr;
+      // Shared debounce for canvas resize handlers below. Resize events can
+      // fire dozens of times a second during a drag-resize or when mobile
+      // browser chrome shows/hides — and each canvas resize() reallocates
+      // the full backing buffer (canvas.width = ...), which is expensive.
+      // Debouncing lets us settle once after the burst instead of
+      // reallocating on every intermediate frame.
+      function debounce(fn, wait) {
+        let t = null;
+        return function (...args) {
+          clearTimeout(t);
+          t = setTimeout(() => fn.apply(this, args), wait);
+        };
+      }
       function resize() {
         dpr = Math.min(window.devicePixelRatio || 1, 2);
         W = window.innerWidth; H = window.innerHeight;
@@ -6875,7 +6897,7 @@
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
-      window.addEventListener('resize', resize);
+      window.addEventListener('resize', debounce(resize, 120));
       resize();
       // ---- Accent-aware color helpers: keep the animated background orbs
       // and celebratory confetti in sync with whatever accent the user picks,
@@ -6979,7 +7001,7 @@
           pc.style.width = pW + 'px'; pc.style.height = pH + 'px';
           pctx.setTransform(pdpr, 0, 0, pdpr, 0, 0);
         }
-        window.addEventListener('resize', presize);
+        window.addEventListener('resize', debounce(presize, 120));
         presize();
         const COUNT = fxTier === 'lite' ? 16 : 42;
         const palette = ['255,107,129', '16,185,129', '139,92,246', '59,130,246'];
