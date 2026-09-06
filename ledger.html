@@ -38,62 +38,70 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root, [data-theme="dark"]{
-    --ink: #0B0E1A;
-    --ink-2: #12162A;
-    --panel: #171C33;
-    --panel-2: #1F2540;
-    --border: #333B5C;
-    --border-soft: #262C48;
-    --text: #F1F3FA;
-    --text-dim: #A6ACC7;
-    --text-faint: #6B7295;
-    --amber: #F2617A;
-    --amber-soft: rgba(242,97,122,0.14);
-    --teal: #2FD98A;
-    --teal-soft: rgba(47,217,138,0.14);
-    --danger: #FF5566;
-    --danger-soft: rgba(255,85,102,0.14);
-    --purple: #B98CF2;
-    --purple-soft: rgba(185,140,242,0.14);
-    --blue: #5B8CFF;
-    --blue-soft: rgba(91,140,255,0.14);
+    /* Deep navy base with richer depth */
+    --ink: #080B16;
+    --ink-2: #0E1224;
+    --panel: #151A30;
+    --panel-2: #1C223C;
+    --border: #2E3658;
+    --border-soft: #232A46;
+    --text: #F4F6FC;
+    --text-dim: #A8AEC9;
+    --text-faint: #6E7594;
+    /* Brand coral — slightly warmer & more saturated */
+    --amber: #FF6B81;
+    --amber-soft: rgba(255,107,129,0.16);
+    /* Fresh mint teal */
+    --teal: #2EE59D;
+    --teal-soft: rgba(46,229,157,0.15);
+    --danger: #FF5A6B;
+    --danger-soft: rgba(255,90,107,0.15);
+    /* Softer lavender purple */
+    --purple: #C4A1F5;
+    --purple-soft: rgba(196,161,245,0.15);
+    --blue: #6B9BFF;
+    --blue-soft: rgba(107,155,255,0.15);
     --section-accent: var(--amber);
     --section-soft: var(--amber-soft);
-    --radius-s: 6px;
-    --radius-m: 10px;
-    --radius-l: 16px;
+    --radius-s: 8px;
+    --radius-m: 12px;
+    --radius-l: 18px;
     --serif: 'Fraunces', Georgia, serif;
     --sans: 'Manrope', system-ui, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
-    --ledger-rule: rgba(150,160,220,0.16);
+    --ledger-rule: rgba(140,155,220,0.11);
     --ease-out: cubic-bezier(.16,1,.3,1);
     --ease-spring: cubic-bezier(.34,1.56,.64,1);
-    --shadow-sm: 0 2px 8px rgba(4,5,20,0.38);
-    --shadow-md: 0 8px 28px rgba(4,5,20,0.5);
+    --shadow-sm: 0 2px 10px rgba(2,4,16,0.45);
+    --shadow-md: 0 10px 32px rgba(2,4,16,0.55);
+    --glow-amber: 0 0 24px rgba(255,107,129,0.22);
+    --glow-teal: 0 0 24px rgba(46,229,157,0.18);
   }
   [data-theme="light"]{
-    --ink: #F5F4FB;
+    --ink: #F7F6FC;
     --ink-2: #FFFFFF;
     --panel: #FFFFFF;
-    --panel-2: #EDECF7;
-    --border: #D7D5EA;
-    --border-soft: #E6E4F3;
-    --text: #16192B;
-    --text-dim: #4B4F6B;
-    --text-faint: #8B8FA8;
-    --amber: #D63A57;
-    --amber-soft: rgba(192,120,24,0.12);
-    --teal: #1C9A63;
-    --teal-soft: rgba(38,143,133,0.12);
-    --danger: #D93245;
-    --danger-soft: rgba(192,82,58,0.12);
-    --purple: #8C5FD1;
-    --purple-soft: rgba(117,88,196,0.12);
-    --blue: #3D63D9;
-    --blue-soft: rgba(58,107,207,0.12);
-    --shadow-sm: 0 2px 8px rgba(20,15,50,0.08);
-    --shadow-md: 0 8px 28px rgba(20,15,50,0.10);
-    --ledger-rule: rgba(70,60,140,0.07);
+    --panel-2: #F0EEF8;
+    --border: #D4D1E8;
+    --border-soft: #E4E1F2;
+    --text: #14182A;
+    --text-dim: #454A66;
+    --text-faint: #8589A3;
+    --amber: #E03D5C;
+    --amber-soft: rgba(224,61,92,0.12);
+    --teal: #0F9B68;
+    --teal-soft: rgba(15,155,104,0.12);
+    --danger: #D42B3E;
+    --danger-soft: rgba(212,43,62,0.11);
+    --purple: #7B4FC4;
+    --purple-soft: rgba(123,79,196,0.11);
+    --blue: #3460D9;
+    --blue-soft: rgba(52,96,217,0.11);
+    --shadow-sm: 0 2px 10px rgba(18,12,45,0.07);
+    --shadow-md: 0 10px 28px rgba(18,12,45,0.09);
+    --ledger-rule: rgba(80,70,150,0.06);
+    --glow-amber: 0 0 20px rgba(224,61,92,0.12);
+    --glow-teal: 0 0 20px rgba(15,155,104,0.10);
   }
 
   *{ box-sizing: border-box; }
@@ -150,20 +158,22 @@
     padding: 10px 14px; gap: 10px; flex-shrink:0;
     position: sticky; top: 10px; z-index: 6;
     margin: 10px 0 16px;
-    background: var(--panel-2);
+    background: color-mix(in srgb, var(--panel-2) 92%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-soft);
     border-radius: 18px;
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.03);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.04);
   }
   .brand{
     display:flex; align-items:center; gap: 10px; cursor:pointer;
     min-width: 0; flex: 1 1 auto;
   }
   .brand-mark{
-    width: 34px; height:34px; border-radius: 10px;
+    width: 34px; height:34px; border-radius: 11px;
     background: linear-gradient(135deg, var(--amber), var(--teal));
     position: relative; flex-shrink:0;
-    box-shadow: 0 2px 14px color-mix(in srgb, var(--amber) 32%, transparent);
+    box-shadow: 0 2px 16px color-mix(in srgb, var(--amber) 38%, transparent), 0 0 20px color-mix(in srgb, var(--teal) 18%, transparent);
   }
   .brand-mark::after{
     content:''; position:absolute; inset: 3px; border-radius: 7px;
@@ -304,7 +314,7 @@
   .opt.selected{
     border-color: var(--section-accent);
     background: linear-gradient(180deg, var(--section-soft), transparent);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--section-accent) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--section-accent) 25%, transparent);
   }
   .opt.selected .marker{ border-color: var(--section-accent); background: var(--section-accent); }
   .opt.selected .marker::after{
@@ -390,11 +400,11 @@
   .btn svg{ width:16px; height:16px; flex-shrink:0; }
   .btn:active{ transform: scale(0.97); }
   .btn-primary{
-    background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 55%, white));
+    background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 60%, white));
     color: #14121C;
-    box-shadow: 0 4px 20px color-mix(in srgb, var(--amber) 38%, transparent);
+    box-shadow: 0 4px 22px color-mix(in srgb, var(--amber) 40%, transparent), var(--glow-amber);
   }
-  .btn-primary:hover{ box-shadow: 0 6px 26px color-mix(in srgb, var(--amber) 48%, transparent); }
+  .btn-primary:hover{ box-shadow: 0 6px 28px color-mix(in srgb, var(--amber) 52%, transparent), 0 0 28px color-mix(in srgb, var(--amber) 28%, transparent); }
   .btn-primary:disabled{ opacity: 0.32; cursor: not-allowed; box-shadow:none; }
   .btn-ghost{
     background: transparent; border: 1px solid var(--border-soft); color: var(--text-dim);
@@ -1113,10 +1123,12 @@
   .bottom-nav{
     position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
     width: min(560px, calc(100% - 24px)); padding: 6px;
-    background: var(--panel);
+    background: color-mix(in srgb, var(--panel) 90%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--border-soft);
-    border-radius: 18px;
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.03);
+    border-radius: 20px;
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.04);
     z-index: 5; display:flex; gap: 3px; justify-content: center;
   }
   .bn-btn{
@@ -1128,7 +1140,7 @@
     letter-spacing: 0.01em;
   }
   .bn-btn svg{ width:18px; height:18px; }
-  .bn-btn.active{ color: var(--ink); background: var(--amber); box-shadow: 0 3px 12px color-mix(in srgb, var(--amber) 40%, transparent); }
+  .bn-btn.active{ color: var(--ink); background: var(--amber); box-shadow: 0 4px 16px color-mix(in srgb, var(--amber) 45%, transparent), 0 0 20px color-mix(in srgb, var(--amber) 20%, transparent); }
   .bn-btn.active svg{ stroke: var(--ink); }
   .bn-btn:not(.active):hover{ color: var(--text-dim); background: var(--panel-2); }
 
@@ -1470,76 +1482,76 @@
      visibly transforms buttons, glows, gradients, icons and the
      animated background alike, not just one highlight color. */
   [data-accent="teal"]{
-    --amber: #2BD9C9; --amber-soft: rgba(43,217,201,0.14);
-    --teal: #F2617A; --teal-soft: rgba(242,97,122,0.14);
-    --blue: #4FC3F7; --blue-soft: rgba(79,195,247,0.14);
-    --purple: #B98CF2; --purple-soft: rgba(185,140,242,0.14);
+    --amber: #2EE5C8; --amber-soft: rgba(46,229,200,0.16);
+    --teal: #FF6B81; --teal-soft: rgba(255,107,129,0.15);
+    --blue: #5BC4F5; --blue-soft: rgba(91,196,245,0.15);
+    --purple: #C4A1F5; --purple-soft: rgba(196,161,245,0.15);
   }
   [data-accent="violet"]{
-    --amber: #B98CF2; --amber-soft: rgba(185,140,242,0.14);
-    --teal: #F2617A; --teal-soft: rgba(242,97,122,0.14);
-    --blue: #5B8CFF; --blue-soft: rgba(91,140,255,0.14);
-    --purple: #2FD98A; --purple-soft: rgba(47,217,138,0.14);
+    --amber: #C4A1F5; --amber-soft: rgba(196,161,245,0.16);
+    --teal: #FF6B81; --teal-soft: rgba(255,107,129,0.15);
+    --blue: #6B9BFF; --blue-soft: rgba(107,155,255,0.15);
+    --purple: #2EE59D; --purple-soft: rgba(46,229,157,0.15);
   }
   [data-accent="rose"]{
-    --amber: #FF6FA0; --amber-soft: rgba(255,111,160,0.14);
-    --teal: #2FD98A; --teal-soft: rgba(47,217,138,0.14);
-    --blue: #B98CF2; --blue-soft: rgba(185,140,242,0.14);
-    --purple: #F2C94C; --purple-soft: rgba(242,201,76,0.14);
+    --amber: #FF7AAB; --amber-soft: rgba(255,122,171,0.16);
+    --teal: #2EE59D; --teal-soft: rgba(46,229,157,0.15);
+    --blue: #C4A1F5; --blue-soft: rgba(196,161,245,0.15);
+    --purple: #F5C84C; --purple-soft: rgba(245,200,76,0.15);
   }
   [data-accent="sky"]{
-    --amber: #4FC3F7; --amber-soft: rgba(79,195,247,0.14);
-    --teal: #F2617A; --teal-soft: rgba(242,97,122,0.14);
-    --blue: #2FD98A; --blue-soft: rgba(47,217,138,0.14);
-    --purple: #B98CF2; --purple-soft: rgba(185,140,242,0.14);
+    --amber: #5BC4F5; --amber-soft: rgba(91,196,245,0.16);
+    --teal: #FF6B81; --teal-soft: rgba(255,107,129,0.15);
+    --blue: #2EE59D; --blue-soft: rgba(46,229,157,0.15);
+    --purple: #C4A1F5; --purple-soft: rgba(196,161,245,0.15);
   }
   [data-accent="emerald"]{
-    --amber: #2FD98A; --amber-soft: rgba(47,217,138,0.14);
-    --teal: #B98CF2; --teal-soft: rgba(185,140,242,0.14);
-    --blue: #4FC3F7; --blue-soft: rgba(79,195,247,0.14);
-    --purple: #F2617A; --purple-soft: rgba(242,97,122,0.14);
+    --amber: #2EE59D; --amber-soft: rgba(46,229,157,0.16);
+    --teal: #C4A1F5; --teal-soft: rgba(196,161,245,0.15);
+    --blue: #5BC4F5; --blue-soft: rgba(91,196,245,0.15);
+    --purple: #FF6B81; --purple-soft: rgba(255,107,129,0.15);
   }
   [data-accent="gold"]{
-    --amber: #F2C94C; --amber-soft: rgba(242,201,76,0.14);
-    --teal: #B98CF2; --teal-soft: rgba(185,140,242,0.14);
-    --blue: #2FD98A; --blue-soft: rgba(47,217,138,0.14);
-    --purple: #F2617A; --purple-soft: rgba(242,97,122,0.14);
+    --amber: #F5C84C; --amber-soft: rgba(245,200,76,0.16);
+    --teal: #C4A1F5; --teal-soft: rgba(196,161,245,0.15);
+    --blue: #2EE59D; --blue-soft: rgba(46,229,157,0.15);
+    --purple: #FF6B81; --purple-soft: rgba(255,107,129,0.15);
   }
   [data-theme="light"][data-accent="teal"]{
-    --amber: #158F82; --amber-soft: rgba(21,143,130,0.12);
-    --teal: #D63A57; --teal-soft: rgba(214,58,87,0.12);
-    --blue: #1E88C7; --blue-soft: rgba(30,136,199,0.12);
-    --purple: #8C5FD1; --purple-soft: rgba(140,95,209,0.12);
+    --amber: #0F9B8A; --amber-soft: rgba(15,155,138,0.12);
+    --teal: #E03D5C; --teal-soft: rgba(224,61,92,0.12);
+    --blue: #1A8BC4; --blue-soft: rgba(26,139,196,0.12);
+    --purple: #7B4FC4; --purple-soft: rgba(123,79,196,0.12);
   }
   [data-theme="light"][data-accent="violet"]{
-    --amber: #8C5FD1; --amber-soft: rgba(140,95,209,0.12);
-    --teal: #D63A57; --teal-soft: rgba(214,58,87,0.12);
-    --blue: #3D63D9; --blue-soft: rgba(61,99,217,0.12);
-    --purple: #1C9A63; --purple-soft: rgba(28,154,99,0.12);
+    --amber: #7B4FC4; --amber-soft: rgba(123,79,196,0.12);
+    --teal: #E03D5C; --teal-soft: rgba(224,61,92,0.12);
+    --blue: #3460D9; --blue-soft: rgba(52,96,217,0.12);
+    --purple: #0F9B68; --purple-soft: rgba(15,155,104,0.12);
   }
   [data-theme="light"][data-accent="rose"]{
-    --amber: #D93D77; --amber-soft: rgba(217,61,119,0.12);
-    --teal: #1C9A63; --teal-soft: rgba(28,154,99,0.12);
-    --blue: #8C5FD1; --blue-soft: rgba(140,95,209,0.12);
-    --purple: #C9971E; --purple-soft: rgba(201,151,30,0.12);
+    --amber: #D93D7A; --amber-soft: rgba(217,61,122,0.12);
+    --teal: #0F9B68; --teal-soft: rgba(15,155,104,0.12);
+    --blue: #7B4FC4; --blue-soft: rgba(123,79,196,0.12);
+    --purple: #C99A1A; --purple-soft: rgba(201,154,26,0.12);
   }
   [data-theme="light"][data-accent="sky"]{
-    --amber: #1E88C7; --amber-soft: rgba(30,136,199,0.12);
-    --teal: #D63A57; --teal-soft: rgba(214,58,87,0.12);
-    --blue: #1C9A63; --blue-soft: rgba(28,154,99,0.12);
-    --purple: #8C5FD1; --purple-soft: rgba(140,95,209,0.12);
+    --amber: #1A8BC4; --amber-soft: rgba(26,139,196,0.12);
+    --teal: #E03D5C; --teal-soft: rgba(224,61,92,0.12);
+    --blue: #0F9B68; --blue-soft: rgba(15,155,104,0.12);
+    --purple: #7B4FC4; --purple-soft: rgba(123,79,196,0.12);
   }
   [data-theme="light"][data-accent="emerald"]{
-    --amber: #1C9A63; --amber-soft: rgba(28,154,99,0.12);
-    --teal: #8C5FD1; --teal-soft: rgba(140,95,209,0.12);
-    --blue: #1E88C7; --blue-soft: rgba(30,136,199,0.12);
-    --purple: #D63A57; --purple-soft: rgba(214,58,87,0.12);
+    --amber: #0F9B68; --amber-soft: rgba(15,155,104,0.12);
+    --teal: #7B4FC4; --teal-soft: rgba(123,79,196,0.12);
+    --blue: #1A8BC4; --blue-soft: rgba(26,139,196,0.12);
+    --purple: #E03D5C; --purple-soft: rgba(224,61,92,0.12);
   }
   [data-theme="light"][data-accent="gold"]{
-    --amber: #C9971E; --amber-soft: rgba(201,151,30,0.12);
-    --teal: #8C5FD1; --teal-soft: rgba(140,95,209,0.12);
-    --blue: #1C9A63; --blue-soft: rgba(28,154,99,0.12);
-    --purple: #D63A57; --purple-soft: rgba(214,58,87,0.12);
+    --amber: #C99A1A; --amber-soft: rgba(201,154,26,0.12);
+    --teal: #7B4FC4; --teal-soft: rgba(123,79,196,0.12);
+    --blue: #0F9B68; --blue-soft: rgba(15,155,104,0.12);
+    --purple: #E03D5C; --purple-soft: rgba(224,61,92,0.12);
   }
 
   /* Share card — designed to also work standalone as a downloaded/shared
@@ -1595,13 +1607,13 @@
     cursor:pointer; position: relative;
   }
   .accent-swatch.active{ border-color: var(--text); }
-  .accent-swatch[data-a="amber"]{ background: #F2617A; }
-  .accent-swatch[data-a="teal"]{ background: #2BD9C9; }
-  .accent-swatch[data-a="violet"]{ background: #B98CF2; }
-  .accent-swatch[data-a="rose"]{ background: #FF6FA0; }
-  .accent-swatch[data-a="sky"]{ background: #4FC3F7; }
-  .accent-swatch[data-a="emerald"]{ background: #2FD98A; }
-  .accent-swatch[data-a="gold"]{ background: #F2C94C; }
+  .accent-swatch[data-a="amber"]{ background: #FF6B81; }
+  .accent-swatch[data-a="teal"]{ background: #2EE5C8; }
+  .accent-swatch[data-a="violet"]{ background: #C4A1F5; }
+  .accent-swatch[data-a="rose"]{ background: #FF7AAB; }
+  .accent-swatch[data-a="sky"]{ background: #5BC4F5; }
+  .accent-swatch[data-a="emerald"]{ background: #2EE59D; }
+  .accent-swatch[data-a="gold"]{ background: #F5C84C; }
 
 
   @media (max-width: 480px){
@@ -8215,7 +8227,7 @@
     const swCode = `
       // Versioned so a redeploy actually evicts old cached shells instead of
       // serving stale HTML forever — bump this string whenever the app ships.
-      const CACHE = 'ledger-shell-v2';
+      const CACHE = 'ledger-shell-v3';
       self.addEventListener('install', (e) => {
         e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./']).catch(()=>{})));
         self.skipWaiting();
