@@ -142,11 +142,18 @@
     max-width: 640px; margin: 0 auto; padding: 0 20px 92px;
   }
 
-  /* Topbar */
+  /* Topbar — floating card, same visual language as .bottom-nav (rounded,
+     panel background, soft shadow) but using --panel-2 instead of --panel
+     so the two floating bars read as a matched pair, not identical twins. */
   .topbar{
     display:flex; align-items:center; justify-content: space-between;
-    padding: 16px 0 14px; flex-shrink:0; gap: 10px;
-    border-bottom: 1px solid var(--border-soft); margin-bottom: 4px;
+    padding: 10px 14px; gap: 10px; flex-shrink:0;
+    position: sticky; top: 10px; z-index: 6;
+    margin: 10px 0 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.03);
   }
   .brand{
     display:flex; align-items:center; gap: 10px; cursor:pointer;
