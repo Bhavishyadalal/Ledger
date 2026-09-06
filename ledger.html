@@ -653,6 +653,24 @@
   }
   .toggle.on::after{ transform: translateX(18px); }
 
+  .mock-row{
+    background: var(--panel); border: 1px solid var(--border-soft);
+    border-radius: var(--radius-m); padding: 12px 13px; margin-bottom: 8px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .mock-row-main{ min-width:0; }
+  .mock-score{ font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--purple); }
+  .mock-score .mock-max{ font-size: 12px; color: var(--text-faint); font-weight: 500; }
+  .mock-meta{ font-size: 12px; color: var(--text-faint); margin-top: 2px; font-weight: 500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mock-del{
+    width:28px; height:28px; border-radius:7px; border:1px solid var(--border-soft);
+    background: transparent; color: var(--text-faint); cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition: border-color 140ms, color 140ms;
+  }
+  .mock-del:hover{ border-color: var(--danger); color: var(--danger); }
+  .mock-del svg{ width:13px; height:13px; }
+
   .q-editor-list{ display:flex; flex-direction:column; gap:8px; }
   .q-editor-item{
     background: var(--panel); border: 1px solid var(--border-soft);
@@ -960,13 +978,29 @@
   .soft-prompt.carry .sp-kicker{ color: var(--teal); }
   .soft-prompt.miss{ border-color: color-mix(in srgb, var(--amber) 38%, transparent); background: var(--amber-soft); }
 
-  /* Weak topics */
+  /* Weak topics / revision list */
   .weak-list{ display:flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .weak-chip{
-    font-size: 12px; font-weight: 650; padding: 5px 10px; border-radius: 100px;
+    display:inline-flex; align-items:center; gap:6px;
+    font-size: 12px; font-weight: 650; padding: 5px 8px 5px 10px; border-radius: 100px;
     background: var(--panel-2); border: 1px solid var(--border-soft); color: var(--text-dim);
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%; overflow: hidden;
   }
+  .weak-chip.recurring{
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--border-soft));
+    background: var(--danger-soft); color: var(--text);
+  }
+  .weak-chip .wc-count{
+    font-size: 10.5px; font-weight: 800; color: var(--danger); flex-shrink:0;
+  }
+  .weak-chip .wc-resolve{
+    display:flex; align-items:center; justify-content:center;
+    width:16px; height:16px; padding:0; flex-shrink:0;
+    border:none; border-radius:50%; background: transparent; color: var(--text-faint);
+    cursor:pointer; transition: background 140ms, color 140ms;
+  }
+  .weak-chip .wc-resolve:hover{ background: var(--teal-soft); color: var(--teal); }
+  .weak-chip .wc-resolve svg{ width:11px; height:11px; stroke-width:3; }
 
 
   /* Empty state */
@@ -2368,6 +2402,7 @@
   const SETTINGS_KEY = 'ledgerSettings';
   const QUESTIONS_KEY = 'ledgerQuestions';
   const MILESTONES_KEY = 'ledgerMilestones';
+  const MOCKS_KEY = 'ledgerMockTests';
 
   // One-time silent migration: if this browser has data under the old
   // "Kota Reset" localStorage keys (from before the rename to Ledger)
@@ -2434,12 +2469,41 @@
     try{ localStorage.setItem(MILESTONES_KEY, JSON.stringify(m)); }catch(e){}
   }
 
+  // ---------- Mock tests (separate from the daily check-in) ----------
+  // Mocks don't happen daily, so they're their own small store rather than
+  // a check-in field. Each entry: { id, dateKey, score, maxScore, physics,
+  // chemistry, biology (optional per-subject scores), note }.
+  function loadMockTests(){
+    try{ const raw = JSON.parse(localStorage.getItem(MOCKS_KEY)); return Array.isArray(raw) ? raw : []; }
+    catch(e){ return []; }
+  }
+  function saveMockTests(list){
+    try{ localStorage.setItem(MOCKS_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  function addMockTest(entry){
+    const list = loadMockTests();
+    list.unshift(Object.assign({ id: 'mock_' + Date.now(), createdAt: Date.now() }, entry));
+    list.sort((a,b) => (a.dateKey < b.dateKey ? 1 : -1));
+    saveMockTests(list);
+    return list;
+  }
+  function deleteMockTest(id){
+    saveMockTests(loadMockTests().filter(m => m.id !== id));
+  }
+  function getRecentMockSummary(limit){
+    const list = loadMockTests().slice(0, limit || 5);
+    if(!list.length) return null;
+    const avgPct = Math.round(100 * list.reduce((s,m) => s + (m.score / (m.maxScore||720)), 0) / list.length);
+    return { list, avgPct };
+  }
+
   const DEFAULT_QUESTIONS = [
     { id:'study_block', type:'mcq', section:'Discipline', q:"Did you complete the 9:00–10:30pm study block?", hint:"Be honest — half-attempts count as no.", options:["Yes, full block","Partial (15–60 min)","No, skipped it"], core:true },
     { id:'morning_block', type:'mcq', section:'Discipline', q:"Did you get through the 8:00–9:30am self-study rep?", options:["Yes, full block","Partial","No, skipped it"], core:true },
     { id:'wake_time', type:'mcq', section:'Discipline', q:"What time did you actually wake up?", options:["By 7:00am","7:00–8:00am","After 8:00am"], core:true },
     { id:'sleep_time', type:'mcq', section:'Discipline', q:"What time did you fall asleep last night?", options:["By 11:00pm","11:00pm–12:30am","After 12:30am"] },
     { id:'questions_solved', type:'stepper', section:'Study', q:"How many practice questions did you actually solve today?", hint:"Not read, not listened to — solved yourself.", unit:"questions", min:0, max:300, step:5, default:0, core:true },
+    { id:'accuracy_band', type:'mcq', section:'Study', q:"Of those, roughly how many did you get right?", hint:"Rough estimate is fine — this matters more than the raw count.", options:["Under 50%","50–75%","Over 75%"], core:true },
     { id:'subject_focus', type:'mcq', section:'Study', q:"Which subject got most of today's practice time?", options:["Physics","Chemistry","Biology"] },
     { id:'weak_topic', type:'text', section:'Study', q:"What's one topic you struggled with today?", hint:"One line is enough — chapter name or concept.", placeholder:"e.g. Rotational mechanics — torque direction confusion", multiline:false },
     { id:'coaching_attention', type:'scale', section:'Study', q:"How present were you during today's Allen classes?", lowLabel:"Zoned out", highLabel:"Fully locked in" },
@@ -2454,7 +2518,17 @@
   function loadQuestions(){
     try{
       const raw = localStorage.getItem(QUESTIONS_KEY);
-      if(raw){ const parsed = JSON.parse(raw); if(Array.isArray(parsed) && parsed.length) return parsed; }
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length){
+          // Merge in any new default questions (e.g. accuracy_band) that a
+          // previously-saved/customized question set predates, so existing
+          // users' saved edits don't silently hide new built-in fields.
+          const haveIds = new Set(parsed.map(q => q.id));
+          const missing = DEFAULT_QUESTIONS.filter(q => !haveIds.has(q.id));
+          return missing.length ? parsed.concat(missing) : parsed;
+        }
+      }
     }catch(e){}
     return JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
   }
@@ -2529,6 +2603,36 @@
     }
     return out;
   }
+
+  // Revision list: same weak-topic pool as getWeakTopics, but grouped by
+  // recurrence (case-insensitive exact match on the phrase) and recency,
+  // so a topic mentioned 3+ times ranks as a real revision priority
+  // instead of just showing as a flat recent list. Topics the user has
+  // explicitly marked resolved (settings.resolvedWeakTopics) are excluded
+  // until they recur again after being resolved.
+  function computeWeakTopicRevisionList(limit){
+    const hist = loadHistory();
+    const resolved = new Set((settings.resolvedWeakTopics || []).map(t => t.toLowerCase()));
+    const byKey = {};
+    hist.forEach(h => {
+      const t = (h.weakTopic || (h.state && h.state.weak_topic) || '').trim();
+      if(!t || t === '(skipped)') return;
+      const key = t.toLowerCase();
+      if(!byKey[key]) byKey[key] = { label: t, count: 0, lastDateKey: h.dateKey };
+      byKey[key].count++;
+      if(h.dateKey > byKey[key].lastDateKey) byKey[key].lastDateKey = h.dateKey;
+    });
+    let list = Object.keys(byKey).map(k => byKey[k]).filter(item => !resolved.has(item.label.toLowerCase()));
+    // priority: more recurrences first, then more recent
+    list.sort((a,b) => b.count - a.count || (a.lastDateKey < b.lastDateKey ? 1 : -1));
+    return list.slice(0, limit || 6);
+  }
+  function markWeakTopicResolved(label){
+    const list = Array.isArray(settings.resolvedWeakTopics) ? settings.resolvedWeakTopics.slice() : [];
+    if(!list.some(t => t.toLowerCase() === label.toLowerCase())) list.push(label);
+    settings.resolvedWeakTopics = list.slice(-40);
+    saveSettings(settings);
+  }
   function getYesterdayKey(){
     const d = new Date(today); d.setDate(d.getDate()-1);
     return d.toISOString().slice(0,10);
@@ -2593,17 +2697,32 @@
     }
     return null;
   }
+  // NEET weights Physics, Chemistry and Biology equally (45 questions /
+  // 180 marks each), so a healthy focus split over a couple of weeks
+  // should land roughly a third each. Flag a subject that's either had
+  // zero focus days, or is clearly underweighted (<15% of logged days
+  // once there's enough history to judge that fairly).
   function computeSubjectNudge(){
-    const hist = loadHistory().slice(0, 10);
+    const hist = loadHistory().slice(0, 14);
     if(hist.length < 5) return null;
     const counts = { Physics:0, Chemistry:0, Biology:0 };
+    let total = 0;
     hist.forEach(h => {
       const s = (h.state && h.state.subject_focus) || '';
-      if(counts[s] !== undefined) counts[s]++;
+      if(counts[s] !== undefined){ counts[s]++; total++; }
     });
+    if(!total) return null;
     for(const name of ['Physics','Chemistry','Biology']){
       if(counts[name] === 0){
-        return `<b>${name}</b> hasn’t had a focus day in your last ${hist.length} logs.`;
+        return `<b>${name}</b> hasn’t had a focus day in your last ${hist.length} logs — NEET weights it equally with the others.`;
+      }
+    }
+    if(hist.length >= 8){
+      for(const name of ['Physics','Chemistry','Biology']){
+        const pct = counts[name] / total;
+        if(pct < 0.15){
+          return `<b>${name}</b> is only ${Math.round(pct*100)}% of your recent focus days — worth a rebalance since it carries equal NEET weight.`;
+        }
       }
     }
     return null;
@@ -3033,11 +3152,16 @@
       </div>
     </div>`;
 
-    // weak topics
-    const weaks = getWeakTopics(7);
-    const weakHtml = weaks.length ? `<div class="chart-wrap" style="margin-bottom:14px">
-      <div class="chart-title">Recent weak topics</div>
-      <div class="weak-list">${weaks.map(t => `<span class="weak-chip" title="${escapeAttr(t)}">${escapeHtml(t)}</span>`).join('')}</div>
+    // weak topics -> revision list (recurrence + recency ranked)
+    const revisionList = computeWeakTopicRevisionList(6);
+    const weakHtml = revisionList.length ? `<div class="chart-wrap" style="margin-bottom:14px">
+      <div class="chart-title">Needs revision</div>
+      <div class="weak-list">${revisionList.map(item => `
+        <span class="weak-chip${item.count > 1 ? ' recurring' : ''}" title="${escapeAttr(item.label)}" data-topic="${escapeAttr(item.label)}">
+          ${escapeHtml(item.label)}${item.count > 1 ? `<b class="wc-count">×${item.count}</b>` : ''}
+          <button type="button" class="wc-resolve" data-topic="${escapeAttr(item.label)}" aria-label="Mark revised" title="Mark revised">${ICONS.check}</button>
+        </span>
+      `).join('')}</div>
     </div>` : '';
 
     const trajHtml = typeof buildTrajectoryHtml === 'function' ? buildTrajectoryHtml() : '';
@@ -3095,6 +3219,14 @@
     document.getElementById('homeStart').onclick = () => goView('checkin');
     stage.querySelectorAll('[data-go]').forEach(el => { el.onclick = () => goView(el.dataset.go); });
     document.getElementById('homeHistory').onclick = openSidebar;
+    stage.querySelectorAll('.wc-resolve').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        markWeakTopicResolved(btn.dataset.topic);
+        showToast('Marked revised');
+        renderHome();
+      };
+    });
     // ---- FX: headline split, tilt cards, counters, reveal ----
     animateHeadline(stage.querySelector('.section-title'));
     stage.querySelectorAll('.stat-box').forEach(box => {
@@ -3588,6 +3720,7 @@
       disciplineScore: disc.score,
       disciplineMax: disc.max,
       questionsSolved: qCount,
+      accuracyBand: state.accuracy_band || '',
       weakTopic: state.weak_topic || '',
       state: Object.assign({}, state),
       data: dataBlock
@@ -3673,18 +3806,68 @@
   // rejection the old api-client-candy proxy had for cross-origin calls).
   const CORS_PROXY_URL = 'https://ledger-ai-proxy.vercel.app/api/proxy';
 
+  // Extra context for the AI Coach only (not shown in the copy/paste block,
+  // which stays a clean single-day record). Summarizes recurring weak
+  // topics, subject balance vs NEET's equal weighting, and recent mock
+  // performance so the AI can reason about patterns, not just today.
+  function buildWeeklyContextBlock(){
+    const lines = [];
+    const revision = computeWeakTopicRevisionList(5);
+    if(revision.length){
+      lines.push('RECURRING WEAK TOPICS (name × times mentioned recently):');
+      revision.forEach(item => lines.push(`- ${item.label} (×${item.count}, last on ${item.lastDateKey})`));
+    }
+    const hist = loadHistory().slice(0, 14);
+    const subjCounts = { Physics:0, Chemistry:0, Biology:0 };
+    let subjTotal = 0;
+    hist.forEach(h => {
+      const s = (h.state && h.state.subject_focus) || '';
+      if(subjCounts[s] !== undefined){ subjCounts[s]++; subjTotal++; }
+    });
+    if(subjTotal){
+      lines.push('');
+      lines.push(`SUBJECT FOCUS BALANCE (last ${hist.length} logged days — NEET weights Physics/Chemistry/Biology equally, 180 marks each):`);
+      ['Physics','Chemistry','Biology'].forEach(name => {
+        const pct = Math.round(100 * subjCounts[name] / subjTotal);
+        lines.push(`- ${name}: ${subjCounts[name]} focus days (${pct}%)`);
+      });
+    }
+    const mockSummary = getRecentMockSummary(5);
+    if(mockSummary){
+      lines.push('');
+      lines.push(`RECENT MOCK TESTS (last ${mockSummary.list.length}, avg ${mockSummary.avgPct}%):`);
+      mockSummary.list.forEach(m => lines.push(`- ${m.dateKey}: ${m.score}/${m.maxScore||720}${m.note ? ' — ' + m.note : ''}`));
+    }
+    return lines.length ? lines.join('\n') : '';
+  }
+
   function buildAiPrompt(dataBlock){
+    const weeklyContext = buildWeeklyContextBlock();
     return [
-      "You are a calm, encouraging but honest coach for a NEET aspirant.",
-      "Below is one day's self-reported check-in data. Respond with three",
-      "short sections:",
-      "1) What went well today (be specific, cite the actual numbers/answers).",
-      "2) What slipped or needs attention (be honest, not harsh).",
-      "3) One concrete, doable adjustment for tomorrow.",
-      "Keep the whole reply under 180 words. No generic motivational fluff.",
+      "You are a calm, honest coach for a NEET (medical entrance exam)",
+      "aspirant. NEET has three equally-weighted subjects — Physics,",
+      "Chemistry, Biology — each 180 marks (45 questions), so treat subject",
+      "imbalance as a real issue, not a minor note. More practice questions",
+      "solved is only good news if accuracy holds up alongside it — weigh",
+      "volume and accuracy together, not volume alone. If recurring weak",
+      "topics are listed below, treat a topic that keeps reappearing as a",
+      "revision priority, not a fresh observation each time. If recent mock",
+      "scores are included, compare them against daily practice volume —",
+      "high effort with flat mocks points to a technique or speed problem,",
+      "not a discipline problem.",
       "",
-      "--- CHECK-IN DATA ---",
-      dataBlock
+      "Respond with exactly three short sections:",
+      "1) Today's read — specific to today's numbers.",
+      "2) Pattern across the week — using the recurring/balance/mock data",
+      "   below if present; say 'not enough history yet' if it's empty.",
+      "3) Tomorrow's one study action — a specific chapter/topic/subject,",
+      "   not generic advice like 'study more' or 'stay focused'.",
+      "Keep the whole reply under 200 words total. No generic motivational",
+      "fluff, and don't invent numbers that weren't given to you.",
+      "",
+      "--- TODAY'S CHECK-IN DATA ---",
+      dataBlock,
+      weeklyContext ? "\n--- RECENT PATTERN DATA (for section 2 only) ---\n" + weeklyContext : ""
     ].join('\n');
   }
 
@@ -3868,6 +4051,10 @@
     });
     const subjTotal = Object.values(subjectCounts).reduce((a,b)=>a+b,0) || 1;
 
+    // mock tests
+    const mockList = loadMockTests().slice().reverse(); // oldest -> newest for the chart
+    const mockSummary = getRecentMockSummary(5);
+
     // trajectory
     const trajHtml = buildTrajectoryHtml();
 
@@ -3912,6 +4099,12 @@
             }).join('')}
           </div>
         </div>
+        ${mockList.length ? `
+        <div class="chart-wrap">
+          <div class="chart-title">Mock scores (% · ${mockList.length} logged)</div>
+          <canvas class="chart-canvas" id="mockChart" height="160"></canvas>
+          ${mockSummary ? `<p class="section-sub" style="margin:10px 0 0">Last ${mockSummary.list.length} mocks avg <b style="color:var(--purple)">${mockSummary.avgPct}%</b> — daily practice volume only matters if this line moves too.</p>` : ''}
+        </div>` : ''}
         ${last7.length ? `
         <div class="stat-strip">
           <div class="stat-box"><div class="num">${Math.round(last7.reduce((s,h)=>s+(h.questionsSolved||0),0)/last7.length)}</div><div class="lbl">avg Q / 7d</div></div>
@@ -3927,6 +4120,10 @@
         const max = h.disciplineMax || 14;
         return max ? Math.round(100 * (h.disciplineScore||0) / max) : 0;
       }), 'teal');
+    }
+    if(mockList.length){
+      const mc = document.getElementById('mockChart');
+      if(mc) drawLineChart(mc, mockList.map(m => Math.round(100 * m.score / (m.maxScore||720))), 'purple');
     }
     animateHeadline(stage.querySelector('.section-title'));
     stage.querySelectorAll('.chart-wrap, .heatmap-wrap, .traj-card').forEach((el,i) => {
@@ -4017,7 +4214,8 @@
       const y = pad.t + (plotH * i/4);
       c.beginPath(); c.moveTo(pad.l, y); c.lineTo(w-pad.r, y); c.stroke();
     }
-    const stroke = getComputedStyle(document.body).getPropertyValue(colorKey==='amber'?'--amber':'--teal').trim() || '#F2617A';
+    const colorVarMap = { amber: '--amber', teal: '--teal', purple: '--purple', blue: '--blue' };
+    const stroke = getComputedStyle(document.body).getPropertyValue(colorVarMap[colorKey] || '--teal').trim() || '#F2617A';
     c.strokeStyle = stroke;
     c.lineWidth = 2.5;
     c.lineJoin = 'round';
@@ -4247,6 +4445,15 @@
           <h3>Account & sync</h3>
         </div>
 
+        <div class="settings-section" id="mockSection">
+          <h3>Mock tests</h3>
+          <div class="section-sub" style="margin-bottom:10px">Full NEET mocks, tracked separately from daily practice — this is what shows if practice volume is actually converting.</div>
+          <div id="mockListWrap"></div>
+          <div class="navrow" style="margin-top:10px">
+            <button class="btn btn-primary" id="doLogMock" style="flex:1">Log a mock score</button>
+          </div>
+        </div>
+
         <div class="settings-section">
           <h3>Preferences</h3>
           <div class="setting-row">
@@ -4440,8 +4647,71 @@
     document.getElementById('setImport').onclick = () => document.getElementById('importFile').click();
     renderQEditor();
     renderAiAdminBox();
+    renderMockList();
+    document.getElementById('doLogMock').onclick = openLogMockModal;
     animateHeadline(stage.querySelector('.section-title'));
     stage.querySelectorAll('.settings-section').forEach((el,i) => { el.classList.add('pop-in'); el.style.animationDelay = (i*60)+'ms'; });
+  }
+
+  // ---------- Mock test UI ----------
+  function renderMockList(){
+    const wrap = document.getElementById('mockListWrap');
+    if(!wrap) return;
+    const mocks = loadMockTests();
+    if(!mocks.length){
+      wrap.innerHTML = `<p class="section-sub" style="margin:0">No mocks logged yet.</p>`;
+      return;
+    }
+    wrap.innerHTML = mocks.slice(0, 8).map(m => {
+      const pct = Math.round(100 * m.score / (m.maxScore || 720));
+      const dateLabel = new Date(m.dateKey + 'T12:00:00').toLocaleDateString(undefined, { day:'numeric', month:'short' });
+      return `<div class="mock-row" data-id="${escapeAttr(m.id)}">
+        <div class="mock-row-main">
+          <div class="mock-score">${m.score}<span class="mock-max">/${m.maxScore||720}</span></div>
+          <div class="mock-meta">${dateLabel} · ${pct}%${m.note ? ' · ' + escapeHtml(m.note) : ''}</div>
+        </div>
+        <button type="button" class="mock-del" data-id="${escapeAttr(m.id)}" aria-label="Delete mock">${ICONS.x}</button>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('.mock-del').forEach(btn => {
+      btn.onclick = async () => {
+        const ok = await appConfirm({ title:'Delete mock?', body:'This mock score will be removed.', okLabel:'Delete', danger:true });
+        if(!ok) return;
+        deleteMockTest(btn.dataset.id);
+        renderMockList();
+      };
+    });
+  }
+
+  function openLogMockModal(){
+    openModal(`
+      <h3>Log a mock score</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <input type="date" class="freetext" id="mockDateIn" style="min-height:unset" value="${todayKey}">
+        <div style="display:flex;gap:8px">
+          <input type="number" inputmode="numeric" class="freetext" id="mockScoreIn" placeholder="Score (e.g. 480)" style="min-height:unset;flex:1">
+          <input type="number" inputmode="numeric" class="freetext" id="mockMaxIn" placeholder="Out of" value="720" style="min-height:unset;width:110px">
+        </div>
+        <input type="text" class="freetext" id="mockNoteIn" placeholder="Optional note — e.g. Allen full test 12" maxlength="60" style="min-height:unset">
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="dlgCancel">Cancel</button>
+        <button class="btn btn-primary" id="dlgOk">Save mock</button>
+      </div>
+    `);
+    document.getElementById('dlgCancel').onclick = closeModal;
+    document.getElementById('dlgOk').onclick = () => {
+      const dateKey = document.getElementById('mockDateIn').value || todayKey;
+      const score = parseInt(document.getElementById('mockScoreIn').value, 10);
+      const maxScore = parseInt(document.getElementById('mockMaxIn').value, 10) || 720;
+      const note = document.getElementById('mockNoteIn').value.trim();
+      if(isNaN(score) || score < 0){ showToast('Enter a valid score'); return; }
+      addMockTest({ dateKey, score, maxScore, note });
+      closeModal();
+      showToast('Mock saved');
+      renderMockList();
+      if(currentView === 'trends') renderTrends();
+    };
   }
 
   // ---------- AI Coach admin panel ----------
@@ -4595,13 +4865,14 @@
 
   function exportCsv(){
     const hist = loadHistory();
-    const rows = [['date','discipline','questions','subject','weak_topic','wake','sleep']];
+    const rows = [['date','discipline','questions','accuracy','subject','weak_topic','wake','sleep']];
     hist.forEach(h => {
       const st = h.state || {};
       rows.push([
         h.dateKey,
         h.disciplineLabel || '',
         String(h.questionsSolved||0),
+        h.accuracyBand || st.accuracy_band || '',
         st.subject_focus || '',
         (h.weakTopic || st.weak_topic || '').replace(/"/g,"'"),
         st.wake_time || '',
@@ -5047,6 +5318,7 @@
         disciplineScore: h.disciplineScore,
         disciplineMax: h.disciplineMax,
         questionsSolved: h.questionsSolved,
+        accuracyBand: h.accuracyBand,
         weakTopic: h.weakTopic,
         state: h.state
       }
@@ -5227,6 +5499,7 @@
             disciplineScore: h.disciplineScore,
             disciplineMax: h.disciplineMax,
             questionsSolved: h.questionsSolved,
+            accuracyBand: h.accuracyBand,
             weakTopic: h.weakTopic,
             state: h.state
           },
