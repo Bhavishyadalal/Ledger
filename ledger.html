@@ -831,6 +831,11 @@
   .modal h3{ font-family: var(--serif); font-size: 22px; margin: 0 0 8px; letter-spacing: -0.02em; }
   .modal p{ font-size: 14px; color: var(--text-dim); line-height: 1.55; margin: 0 0 18px; }
   .modal-actions{ display:flex; gap:10px; }
+  .btn-compact{ flex: 1 1 0; padding: 11px 14px; font-size: 13.5px; }
+  .share-modal-actions{ flex-direction: column; margin-top: 16px; gap: 10px; }
+  .share-actions-row{ display:flex; gap:8px; }
+  .share-actions-row .btn{ flex: 1 1 0; min-width: 0; }
+  .share-modal-actions .btn-primary{ width: 100%; }
 
   [data-section="Discipline"]{ --section-accent: var(--amber); --section-soft: var(--amber-soft); }
   [data-section="Study"]{ --section-accent: var(--teal); --section-soft: var(--teal-soft); }
@@ -1149,9 +1154,24 @@
   }
   .share-card .sc-mark::after{ content:''; position:absolute; inset:2px; border-radius:6px; background: var(--panel); }
   .share-card .sc-brand{ font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
+  .share-card .sc-streak{
+    margin-left:auto; font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--teal); background: var(--teal-soft); padding: 5px 10px; border-radius: 100px;
+    white-space: nowrap;
+  }
   .share-card .sc-date{ font-family: var(--serif); font-size: 24px; font-weight: 600; margin-bottom: 14px; letter-spacing: -0.02em; position:relative; z-index:1; }
   .share-card .sc-stats{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; position:relative; z-index:1; }
   .share-card .sc-pill{ font-size: 13px; font-weight: 700; padding: 7px 13px; border-radius: 100px; background: var(--panel); border: 1px solid var(--border-soft); }
+  .share-card .sc-weak{
+    font-size: 13px; color: var(--text-dim); font-weight: 600; margin-bottom: 14px;
+    display:flex; align-items:center; gap:7px; position:relative; z-index:1;
+  }
+  .share-card .sc-weak b{ color: var(--purple); font-weight: 700; }
+  .share-card .sc-weak-dot{ width:7px; height:7px; border-radius:50%; background: var(--purple); flex-shrink:0; }
+  .share-card .sc-note-label{
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint);
+    margin-bottom: 6px; position:relative; z-index:1;
+  }
   .share-card .sc-note{ font-size: 14px; color: var(--text-dim); line-height: 1.55; font-style: italic; font-family: var(--serif); position:relative; z-index:1; }
   .share-card .sc-foot{ margin-top: 18px; font-size: 11px; color: var(--text-faint); font-weight: 600; letter-spacing: 0.03em; position:relative; z-index:1; }
 
@@ -2049,7 +2069,9 @@
     reflect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
     target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
     sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"/></svg>',
-    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>',
+    fileText: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>'
   };
 
   function sectionIcon(section){
@@ -4075,27 +4097,40 @@
     const note = (st.mood_note || st.tomorrow_one_thing || '').trim();
     const noteLine = note ? (note.length > 140 ? note.slice(0,137)+'…' : note) : 'No reflection note.';
     const streak = computeStreak();
+    const accuracy = (st.accuracy_band || '').trim();
+    const weakTopic = (st.weak_topic || '').trim();
     openModal(`
       <div class="share-card" id="shareCardInner">
-        <div class="sc-head"><div class="sc-mark"></div><div class="sc-brand">Ledger</div></div>
+        <div class="sc-head">
+          <div class="sc-mark"></div><div class="sc-brand">Ledger</div>
+          ${streak > 1 ? `<div class="sc-streak">🔥 ${streak}-day streak</div>` : ''}
+        </div>
         <div class="sc-date">${escapeHtml(dateStr)}</div>
         <div class="sc-stats">
           <span class="sc-pill">Discipline: <b style="color:${discInfo.color}">${discInfo.label}</b></span>
           <span class="sc-pill">Questions: <b style="color:var(--amber)">${qCount}</b></span>
-          ${streak > 1 ? `<span class="sc-pill">Streak: <b style="color:var(--teal)">${streak} days</b></span>` : ''}
+          ${accuracy ? `<span class="sc-pill">Accuracy: <b style="color:var(--blue)">${escapeHtml(accuracy)}</b></span>` : ''}
         </div>
+        ${weakTopic ? `<div class="sc-weak"><span class="sc-weak-dot"></span> Weak topic flagged: <b>${escapeHtml(weakTopic)}</b></div>` : ''}
+        <div class="sc-note-label">Tonight's reflection</div>
         <div class="sc-note">${escapeHtml(noteLine)}</div>
         <div class="sc-foot">LOGGED WITH LEDGER</div>
       </div>
-      <div class="modal-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px">
-        <button class="btn btn-ghost" id="modalCancel">Close</button>
-        <button class="btn btn-ghost" id="shareCopy">Copy text</button>
-        <button class="btn btn-primary" id="shareImg" style="flex:1;min-width:140px">${ICONS.sparkle} Share as image</button>
+      <div class="modal-actions share-modal-actions">
+        <div class="share-actions-row">
+          <button class="btn btn-ghost btn-compact" id="modalCancel">Close</button>
+          <button class="btn btn-ghost btn-compact" id="shareCopy">Copy text</button>
+        </div>
+        <button class="btn btn-primary" id="shareImg">${ICONS.sparkle} Share as image</button>
       </div>
     `);
     document.getElementById('modalCancel').onclick = closeModal;
     document.getElementById('shareCopy').onclick = async () => {
-      const text = `Ledger — ${dateStr}\nDiscipline: ${discInfo.label}\nQuestions: ${qCount}\n${noteLine}`;
+      const lines = [`Ledger — ${dateStr}`, `Discipline: ${discInfo.label}`, `Questions: ${qCount}`];
+      if(accuracy) lines.push(`Accuracy: ${accuracy}`);
+      if(weakTopic) lines.push(`Weak topic: ${weakTopic}`);
+      lines.push(noteLine);
+      const text = lines.join('\n');
       try{ await navigator.clipboard.writeText(text); }catch(e){}
       const b = document.getElementById('shareCopy');
       if(b){ b.textContent = 'Copied'; setTimeout(()=>{ b.textContent = 'Copy text'; }, 1200); }
@@ -4153,6 +4188,186 @@
       if(err && err.name === 'AbortError'){ /* user cancelled the share sheet — not an error */ }
       else showToast(err.message || 'Could not create image');
     }finally{
+      if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Weekly PDF report — a printable, mentor/parent-friendly summary
+  // built from the same data as the Weekly view. Renders an offscreen
+  // HTML sheet styled to match the app, rasterizes it with html2canvas
+  // (already lazy-loaded for the daily share card), then wraps that
+  // into a PDF page with jsPDF — loaded lazily the same way, so pages
+  // that never touch this feature pay nothing for it. Entirely
+  // client-side: no server, no upload of the student's data.
+  // ---------------------------------------------------------------
+  let _jsPdfLoading = null;
+  function loadJsPdf(){
+    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+    if(_jsPdfLoading) return _jsPdfLoading;
+    _jsPdfLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load PDF renderer — check your connection'));
+      document.head.appendChild(s);
+    });
+    return _jsPdfLoading;
+  }
+
+  function buildWeeklyReportHtml(ctx){
+    const { days, logged, avgQ, strong, best, worst, subjectCounts, subjTotal, insightHtml } = ctx;
+    const auth = (typeof loadAuth === 'function') ? loadAuth() : null;
+    const studentName = (auth && auth.name) ? auth.name : 'Student';
+    const streak = computeStreak();
+    const rangeStart = days[0], rangeEnd = days[days.length-1];
+    const rangeLabel = `${rangeStart.label} ${rangeStart.dayNum} — ${rangeEnd.label} ${rangeEnd.dayNum}`;
+    const generated = new Date().toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    const discColor = cls => cls === 'strong' ? '#2FD98A' : cls === 'mixed' ? '#F2617A' : cls === 'rough' ? '#FF5566' : '#6B7295';
+    const discLabel = e => e ? (e.disciplineLabel || '—') : '—';
+
+    const rowsHtml = days.map(d => {
+      const e = d.entry;
+      return `<tr>
+        <td class="wr-day">${escapeHtml(d.label)} ${d.dayNum}</td>
+        <td><span class="wr-disc" style="color:${discColor(e ? e.disciplineCls : '')}">${escapeHtml(discLabel(e))}</span></td>
+        <td class="wr-num">${e ? (e.questionsSolved||0) : '—'}</td>
+        <td class="wr-num">${e ? (e.accuracyBand || '—') : '—'}</td>
+        <td>${e && e.weakTopic ? escapeHtml(e.weakTopic) : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    // Recurring weak topics across the logged week (count occurrences)
+    const topicCounts = {};
+    logged.forEach(d => {
+      const t = (d.entry.weakTopic || '').trim();
+      if(t) topicCounts[t] = (topicCounts[t]||0) + 1;
+    });
+    const recurring = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]);
+
+    const subjectColors = { Physics:'#5B8CFF', Chemistry:'#2FD98A', Biology:'#B98CF2' };
+    const subjectRows = ['Physics','Chemistry','Biology'].map(name => {
+      const c = subjectCounts[name] || 0;
+      const pct = Math.round(100 * c / subjTotal);
+      return `<div class="wr-subj-row">
+        <span class="wr-subj-label">${name}</span>
+        <div class="wr-subj-track"><div class="wr-subj-fill" style="width:${pct}%;background:${subjectColors[name]}"></div></div>
+        <span class="wr-subj-count">${c} day${c===1?'':'s'}</span>
+      </div>`;
+    }).join('');
+
+    return `
+    <div id="weeklyReportSheet" style="width:820px;padding:56px;background:#0B0E1A;color:#F1F3FA;font-family:'Manrope',system-ui,sans-serif;position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#F2617A,#2FD98A);position:relative;">
+            <div style="position:absolute;inset:3px;border-radius:8px;background:#0B0E1A;"></div>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:800;letter-spacing:0.02em;">LEDGER</div>
+            <div style="font-size:12px;color:#A6ACC7;font-weight:600;">Weekly discipline report</div>
+          </div>
+        </div>
+        ${streak > 1 ? `<div style="background:rgba(47,217,138,0.14);color:#2FD98A;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:7px 14px;border-radius:100px;">🔥 ${streak}-day streak</div>` : ''}
+      </div>
+
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px;">${escapeHtml(studentName)}</div>
+      <div style="font-size:14px;color:#A6ACC7;font-weight:600;margin-bottom:26px;">${escapeHtml(rangeLabel)}</div>
+
+      <div style="display:flex;gap:14px;margin-bottom:26px;">
+        <div style="flex:1;background:#171C33;border:1px solid #262C48;border-radius:14px;padding:18px;text-align:center;">
+          <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;">${logged.length}/7</div>
+          <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.03em;margin-top:4px;">DAYS LOGGED</div>
+        </div>
+        <div style="flex:1;background:#171C33;border:1px solid #262C48;border-radius:14px;padding:18px;text-align:center;">
+          <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;">${avgQ}</div>
+          <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.03em;margin-top:4px;">AVG QUESTIONS/DAY</div>
+        </div>
+        <div style="flex:1;background:#171C33;border:1px solid #262C48;border-radius:14px;padding:18px;text-align:center;">
+          <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;">${strong}</div>
+          <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.03em;margin-top:4px;">STRONG DAYS</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">DAY BY DAY</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:26px;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:1px solid #262C48;">
+            <th style="text-align:left;padding:8px 10px;color:#6B7295;font-size:11px;letter-spacing:0.03em;">DAY</th>
+            <th style="text-align:left;padding:8px 10px;color:#6B7295;font-size:11px;letter-spacing:0.03em;">DISCIPLINE</th>
+            <th style="text-align:left;padding:8px 10px;color:#6B7295;font-size:11px;letter-spacing:0.03em;">QUESTIONS</th>
+            <th style="text-align:left;padding:8px 10px;color:#6B7295;font-size:11px;letter-spacing:0.03em;">ACCURACY</th>
+            <th style="text-align:left;padding:8px 10px;color:#6B7295;font-size:11px;letter-spacing:0.03em;">WEAK TOPIC</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+
+      ${best || (worst && worst !== best) ? `
+      <div style="display:flex;gap:14px;margin-bottom:26px;">
+        ${best ? `<div style="flex:1;background:rgba(47,217,138,0.1);border:1px solid rgba(47,217,138,0.3);border-radius:14px;padding:16px 18px;">
+          <div style="font-size:11px;color:#2FD98A;font-weight:700;letter-spacing:0.04em;margin-bottom:6px;">BEST DAY</div>
+          <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;">${escapeHtml(best.entry.dateLabel || (best.label+' '+best.dayNum))}</div>
+          <div style="font-size:13px;color:#A6ACC7;margin-top:2px;">${best.entry.questionsSolved||0} questions · ${escapeHtml(discLabel(best.entry))}</div>
+        </div>` : ''}
+        ${worst && worst !== best ? `<div style="flex:1;background:rgba(255,85,102,0.08);border:1px solid rgba(255,85,102,0.25);border-radius:14px;padding:16px 18px;">
+          <div style="font-size:11px;color:#FF5566;font-weight:700;letter-spacing:0.04em;margin-bottom:6px;">LIGHTEST DAY</div>
+          <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;">${escapeHtml(worst.entry.dateLabel || (worst.label+' '+worst.dayNum))}</div>
+          <div style="font-size:13px;color:#A6ACC7;margin-top:2px;">${worst.entry.questionsSolved||0} questions · ${escapeHtml(discLabel(worst.entry))}</div>
+        </div>` : ''}
+      </div>` : ''}
+
+      <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">SUBJECT FOCUS THIS WEEK</div>
+      <div style="margin-bottom:26px;">${subjectRows}</div>
+
+      ${insightHtml ? `
+      <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">PATTERNS WORTH KNOWING</div>
+      <div style="background:#171C33;border:1px solid #262C48;border-radius:14px;padding:16px 18px;margin-bottom:26px;font-size:13.5px;line-height:1.7;color:#F1F3FA;">
+        ${insightHtml.replace(/class="insight-line"/g,'style="margin-bottom:6px"')}
+      </div>` : ''}
+
+      ${recurring.length ? `
+      <div style="font-size:11px;color:#6B7295;font-weight:700;letter-spacing:0.05em;margin-bottom:10px;">RECURRING WEAK TOPICS</div>
+      <div style="margin-bottom:12px;">
+        ${recurring.map(([topic,count]) => `<div style="display:flex;align-items:center;justify-content:space-between;background:#171C33;border:1px solid #262C48;border-radius:12px;padding:12px 16px;margin-bottom:8px;font-size:13.5px;">
+          <span><span style="color:#B98CF2;">●</span>&nbsp; ${escapeHtml(topic)}</span>
+          ${count > 1 ? `<span style="color:#6B7295;font-family:'JetBrains Mono',monospace;font-size:12px;">×${count}</span>` : ''}
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;padding-top:18px;border-top:1px solid #262C48;font-size:11px;color:#6B7295;font-weight:600;">
+        <span>Generated ${escapeHtml(generated)}</span>
+        <span style="font-style:italic;">Logged with Ledger</span>
+      </div>
+    </div>`;
+  }
+
+  async function downloadWeeklyPdf(ctx){
+    const btn = document.getElementById('exportWeeklyPdf');
+    const originalLabel = btn ? btn.innerHTML : '';
+    if(btn){ btn.disabled = true; btn.innerHTML = `<span class="ai-coach-spin">${ICONS.sparkle}</span> Building report…`; }
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
+    host.innerHTML = buildWeeklyReportHtml(ctx);
+    document.body.appendChild(host);
+    try{
+      await Promise.all([loadHtml2Canvas(), loadJsPdf()]);
+      const sheet = document.getElementById('weeklyReportSheet');
+      const canvas = await window.html2canvas(sheet, { backgroundColor: '#0B0E1A', scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdfWidth = 595.28; // A4 pt, portrait
+      const pdfHeight = pdfWidth * (canvas.height / canvas.width);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [pdfWidth, Math.max(pdfHeight, 841.89)] });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const stamp = new Date().toISOString().slice(0,10);
+      pdf.save(`ledger-weekly-report-${stamp}.pdf`);
+      showToast('Weekly report downloaded');
+    }catch(err){
+      showToast(err.message || 'Could not build the PDF');
+    }finally{
+      document.body.removeChild(host);
       if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
     }
   }
@@ -4470,13 +4685,16 @@
         ${best ? `<div class="compare-line"><b>Best day:</b> ${escapeHtml(best.entry.dateLabel)} — ${best.entry.questionsSolved||0} questions, ${best.entry.disciplineLabel}</div>` : ''}
         ${worst && worst !== best ? `<div class="compare-line"><b>Lightest day:</b> ${escapeHtml(worst.entry.dateLabel)} — ${worst.entry.questionsSolved||0} questions, ${worst.entry.disciplineLabel}</div>` : ''}
         ${!logged.length ? `<p class="section-sub">No check-ins in the last week yet.</p>` : ''}
-        <div class="navrow" style="margin-top:8px">
+        <div class="navrow" style="margin-top:8px;flex-wrap:wrap;gap:8px">
           <button class="btn btn-ghost" id="goMonthly">Open monthly calendar</button>
+          <button class="btn btn-primary" id="exportWeeklyPdf" style="flex:1;min-width:180px" ${!logged.length ? 'disabled' : ''}>${ICONS.fileText} Download weekly report (PDF)</button>
         </div>
       </div>
     `;
     const goM = document.getElementById('goMonthly');
     if(goM) goM.onclick = () => goView('monthly');
+    const expPdf = document.getElementById('exportWeeklyPdf');
+    if(expPdf) expPdf.onclick = () => downloadWeeklyPdf({ days, logged, avgQ, strong, best, worst, subjectCounts, subjTotal, insightHtml });
     animateHeadline(stage.querySelector('.section-title'));
     const wg = stage.querySelector('.week-grid');
     if(wg) wg.classList.add('reveal-stagger');
