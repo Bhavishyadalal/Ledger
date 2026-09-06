@@ -3426,15 +3426,57 @@
         body: JSON.stringify({
           model,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 500
+          max_tokens: 500,
+          stream: true
         })
       });
       if(!resp.ok){
         const errBody = await resp.text().catch(() => '');
         throw new Error(`AI request failed (${resp.status})${errBody ? ': ' + errBody.slice(0,200) : ''}`);
       }
-      const json = await resp.json();
-      const reply = (json.choices && json.choices[0] && (json.choices[0].message?.content || json.choices[0].text)) || '';
+
+      // The upstream model streams its answer back as newline-separated
+      // "data: {...}" SSE chunks (same contract as api-client-candy uses),
+      // not one single JSON object — so read it chunk-by-chunk and
+      // accumulate each chunk's delta.content instead of calling
+      // resp.json() on the whole thing.
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      let reply = '';
+      let done = false;
+      while(!done){
+        const { done: rDone, value } = await reader.read();
+        if(rDone) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop(); // keep any partial trailing line for next chunk
+        for(const line of lines){
+          const trimmed = line.trim();
+          if(!trimmed || !trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          if(payload === '[DONE]'){ done = true; break; }
+          try{
+            const evt = JSON.parse(payload);
+            const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
+            const piece = (delta && delta.content) || (evt.choices && evt.choices[0] && evt.choices[0].text) || '';
+            reply += piece;
+          }catch(e){ /* ignore partial/non-JSON lines */ }
+        }
+      }
+
+      // Fallback: some setups may return a single non-streamed JSON object
+      // instead of SSE chunks (e.g. if the proxy/upstream ignores `stream`).
+      // If we got nothing from the SSE parse above, try parsing the whole
+      // buffered text as one JSON response before giving up.
+      if(!reply){
+        const wholeText = (buf || '').trim();
+        try{
+          const json = JSON.parse(wholeText);
+          reply = (json.choices && json.choices[0] && (json.choices[0].message?.content || json.choices[0].text)) || '';
+        }catch(e){ /* not a single JSON object either */ }
+      }
+
       if(!reply) throw new Error('Empty response from AI');
 
       panel.innerHTML = `
