@@ -624,7 +624,14 @@
   .bottom-nav{
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: min(640px, 100%); padding: 10px 14px 14px;
-    background: linear-gradient(to top, var(--ink) 55%, transparent);
+    /* Fallback for browsers without color-mix() support: closest to
+       the old hard-stop gradient, still readable, just not as smooth. */
+    background: linear-gradient(to top, var(--ink) 30%, transparent);
+    background: linear-gradient(to top,
+      var(--ink) 0%, var(--ink) 18%,
+      color-mix(in srgb, var(--ink) 85%, transparent) 40%,
+      color-mix(in srgb, var(--ink) 45%, transparent) 65%,
+      transparent 100%);
     z-index: 5; display:flex; gap: 5px; justify-content: center;
   }
   .bn-btn{
