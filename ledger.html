@@ -678,11 +678,19 @@
   .doubt-error-bubble{ color: var(--danger); font-size: 13.5px; }
 
   .doubt-inputbar{
-    display:flex; align-items:flex-end; gap:9px; flex-shrink:0;
+    display:flex; flex-direction: column; flex-shrink:0;
     background: var(--panel); border: 1px solid var(--border-soft);
-    border-radius: var(--radius-m); padding: 8px 8px 8px 15px; margin-top: 10px;
+    border-radius: var(--radius-m); padding: 8px; margin-top: 10px;
     box-shadow: var(--shadow-sm);
     position: relative; z-index: 6;
+    transition: border-color 140ms, background 140ms;
+  }
+  .doubt-inputbar.drag-over{
+    border-color: var(--purple); background: color-mix(in srgb, var(--purple) 8%, var(--panel));
+  }
+  .doubt-input-row{
+    display:flex; align-items:flex-end; gap:9px;
+    padding-left: 7px;
   }
   .doubt-input{
     flex:1; background: transparent; border:none; color: var(--text);
@@ -714,10 +722,11 @@
   .doubt-attach-btn:active{ transform: scale(0.9); }
   .doubt-attach-btn svg{ width:17px; height:17px; }
   .doubt-preview-row{
-    display:flex; gap:8px; padding: 0 2px 8px; flex-shrink:0; flex-wrap:wrap;
+    display:flex; gap:8px; padding: 4px 4px 10px; flex-shrink:0; flex-wrap:wrap;
+    border-bottom: 1px solid var(--border-soft); margin-bottom: 8px;
   }
   .doubt-preview-chip{
-    position:relative; width: 56px; height: 56px; border-radius: 10px; overflow:hidden;
+    position:relative; width: 52px; height: 52px; border-radius: 10px; overflow:hidden;
     border: 1px solid var(--border-soft); flex-shrink:0; box-shadow: var(--shadow-sm);
   }
   .doubt-preview-chip img{ width:100%; height:100%; object-fit:cover; display:block; }
@@ -4800,6 +4809,7 @@
   }
 
   let doubtPendingImage = null; // { dataUrl } — staged photo attachment, cleared on send/remove
+  let _doubtDocPasteHandler = null; // tracks the document-level paste listener so re-renders don't stack duplicates
 
   function renderDoubt(){
     const cfg = getExamConfig();
@@ -4816,16 +4826,18 @@
           <button type="button" class="doubt-clear-btn" id="doubtClearBtn" aria-label="Clear chat" title="Clear chat">${ICONS.x}</button>
         </div>
         <div class="doubt-scroll" id="doubtScroll"></div>
-        <div class="doubt-preview-row" id="doubtPreviewRow" style="display:none"></div>
-        <div class="doubt-inputbar">
-          <button type="button" class="doubt-attach-btn" id="doubtAttachBtn" aria-label="Attach photo" title="Attach a photo of the problem">${ICONS.camera}</button>
-          <input type="file" id="doubtFileInput" accept="image/*" capture="environment" style="display:none">
-          <textarea class="doubt-input" id="doubtInput" rows="1" placeholder="Ask a study doubt…" maxlength="800"></textarea>
-          <button type="button" class="doubt-send-btn" id="doubtSendBtn" aria-label="Send" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          </button>
+        <div class="doubt-inputbar" id="doubtInputbar">
+          <div class="doubt-preview-row" id="doubtPreviewRow" style="display:none"></div>
+          <div class="doubt-input-row">
+            <button type="button" class="doubt-attach-btn" id="doubtAttachBtn" aria-label="Attach photo" title="Attach a photo of the problem">${ICONS.camera}</button>
+            <input type="file" id="doubtFileInput" accept="image/*" capture="environment" style="display:none">
+            <textarea class="doubt-input" id="doubtInput" rows="1" placeholder="Ask a study doubt…" maxlength="800"></textarea>
+            <button type="button" class="doubt-send-btn" id="doubtSendBtn" aria-label="Send" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
         </div>
-        <div class="doubt-hint">Answers cover ${cfg.label} academics only.</div>
+        <div class="doubt-hint">Answers cover ${cfg.label} academics only. Tip: paste (Ctrl/Cmd+V) or drop an image to attach it.</div>
       </div>
     `;
     doubtPendingImage = null;
@@ -4855,9 +4867,8 @@
     sendBtn.onclick = () => sendDoubtMessage(input.value);
 
     attachBtn.onclick = () => fileInput.click();
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files && fileInput.files[0];
-      fileInput.value = '';
+
+    function handleDoubtImageFile(file){
       if(!file) return;
       if(!file.type.startsWith('image/')){
         showToast('Please choose an image file');
@@ -4886,7 +4897,76 @@
       };
       reader.onerror = () => showToast('Could not read that image — try again');
       reader.readAsDataURL(file);
+    }
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
+      handleDoubtImageFile(file);
     });
+
+    // Paste a screenshot or copied image straight into the doubt box —
+    // same behavior as pasting an image into claude.ai's chat input.
+    function handleDoubtPaste(e){
+      const items = (e.clipboardData || window.clipboardData) && (e.clipboardData || window.clipboardData).items;
+      if(!items) return;
+      let imageFile = null;
+      for(const item of items){
+        if(item.kind === 'file' && item.type.startsWith('image/')){
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+      if(imageFile){
+        e.preventDefault();
+        handleDoubtImageFile(imageFile);
+      }
+    }
+    input.addEventListener('paste', handleDoubtPaste);
+    // Also catch paste anywhere over the doubt screen (not just while the
+    // textarea is focused) — mirrors how claude.ai lets you paste a
+    // screenshot into the chat even before clicking into the input box.
+    // A plain paste listener on a container div won't reliably fire unless
+    // the div itself is focused, so we listen on the document instead and
+    // scope it to only act while the Doubt screen is the active view.
+    function docLevelDoubtPaste(e){
+      if(currentView !== 'doubt') return;
+      // Don't double-handle if the paste already landed on the textarea
+      // itself (that listener above already ran / will run).
+      if(e.target === input) return;
+      handleDoubtPaste(e);
+    }
+    if(_doubtDocPasteHandler) document.removeEventListener('paste', _doubtDocPasteHandler);
+    _doubtDocPasteHandler = docLevelDoubtPaste;
+    document.addEventListener('paste', docLevelDoubtPaste);
+
+    // Drag-and-drop an image file onto the input bar — same idea as paste,
+    // for desktop users dragging a screenshot in from their file manager.
+    const inputBar = document.getElementById('doubtInputbar');
+    if(inputBar){
+      let dragDepth = 0;
+      inputBar.addEventListener('dragover', (e) => {
+        if(!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+        e.preventDefault();
+      });
+      inputBar.addEventListener('dragenter', (e) => {
+        if(!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+        e.preventDefault();
+        dragDepth++;
+        inputBar.classList.add('drag-over');
+      });
+      inputBar.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if(dragDepth === 0) inputBar.classList.remove('drag-over');
+      });
+      inputBar.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        inputBar.classList.remove('drag-over');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if(file) handleDoubtImageFile(file);
+      });
+    }
 
     clearBtn.onclick = async () => {
       if(!doubtMessages.length) return;
