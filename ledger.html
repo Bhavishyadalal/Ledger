@@ -3588,7 +3588,6 @@
           saveSettings(settings);
         }
         playTick();
-        spawnConfetti(nextBtn, {count: 50});
         goNext();
       });
     } else {
@@ -3859,7 +3858,6 @@
     stage.querySelectorAll('.pill').forEach((p,i) => { p.classList.add('pop-in'); p.style.animationDelay = (i*90)+'ms'; });
     const outCard = stage.querySelector('.output-card');
     if(outCard) attachTilt(outCard, {strength:3});
-    setTimeout(() => spawnConfetti(stage.querySelector('.scorepills'), {count: discInfo.cls === 'strong' ? 60 : 34}), 260);
     const copyBtn = document.getElementById('copyBtn');
     attachRipple(copyBtn);
     copyBtn.classList.add('shine');
