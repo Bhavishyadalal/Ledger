@@ -4099,6 +4099,7 @@
     const streak = computeStreak();
     const accuracy = (st.accuracy_band || '').trim();
     const weakTopic = (st.weak_topic || '').trim();
+    const shareData = { dateStr, discInfo, qCount, streak, accuracy, weakTopic, noteLine };
     openModal(`
       <div class="share-card" id="shareCardInner">
         <div class="sc-head">
@@ -4135,16 +4136,21 @@
       const b = document.getElementById('shareCopy');
       if(b){ b.textContent = 'Copied'; setTimeout(()=>{ b.textContent = 'Copy text'; }, 1200); }
     };
-    document.getElementById('shareImg').onclick = () => shareCardAsImage(dateStr);
+    document.getElementById('shareImg').onclick = () => shareCardAsImage(shareData);
   }
 
-  // Renders the .share-card DOM node to a PNG (client-side, via
-  // html2canvas — loaded lazily on first use since most visits never
-  // touch this). On mobile with Web Share API + file support, this opens
-  // the native share sheet with the image attached, exactly like sharing
-  // a photo — WhatsApp/Instagram/etc. show up as direct targets. Falls
-  // back to a plain image download everywhere else (desktop, older
-  // browsers) so the feature still works, just one tap less automatic.
+  // Renders a standalone, hex-color-only clone of the share card to a PNG
+  // (client-side, via html2canvas — loaded lazily on first use since most
+  // visits never touch this). We deliberately do NOT rasterize the live
+  // .share-card DOM node: it inherits color-mix()/color-mix-based CSS
+  // custom properties from the main stylesheet (used for glows/gradients
+  // across the app), and html2canvas — a canvas-based renderer that predates
+  // that CSS spec — cannot parse color-mix() and silently fails to produce
+  // a usable image. Building an isolated node with plain hex/rgba values
+  // sidesteps that entirely. On mobile with Web Share API + file support,
+  // this opens the native share sheet with the image attached, exactly like
+  // sharing a photo — WhatsApp/Instagram/etc. show up as direct targets.
+  // Falls back to a plain image download everywhere else.
   let _html2canvasLoading = null;
   function loadHtml2Canvas(){
     if(window.html2canvas) return Promise.resolve();
@@ -4158,24 +4164,52 @@
     });
     return _html2canvasLoading;
   }
-  async function shareCardAsImage(dateStr){
+
+  function buildShareCardStandaloneHtml(d){
+    const discHex = { strong:'#2FD98A', mixed:'#F2617A', rough:'#FF5566' }[d.discInfo.cls] || '#A6ACC7';
+    return `
+    <div id="shareCardStandalone" style="width:420px;padding:26px 24px 22px;background:linear-gradient(160deg,#12162A,#171C33);border:1px solid #262C48;border-radius:16px;font-family:'Manrope',system-ui,sans-serif;color:#F1F3FA;position:relative;">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#F2617A,#2FD98A);position:relative;flex-shrink:0;">
+          <div style="position:absolute;inset:2px;border-radius:6px;background:#171C33;"></div>
+        </div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:0.02em;">Ledger</div>
+        ${d.streak > 1 ? `<div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#2FD98A;background:rgba(47,217,138,0.14);padding:5px 10px;border-radius:100px;white-space:nowrap;">🔥 ${d.streak}-day streak</div>` : ''}
+      </div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-0.02em;margin-bottom:14px;">${escapeHtml(d.dateStr)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <span style="font-size:13px;font-weight:700;padding:7px 13px;border-radius:100px;background:#171C33;border:1px solid #262C48;">Discipline: <b style="color:${discHex}">${escapeHtml(d.discInfo.label)}</b></span>
+        <span style="font-size:13px;font-weight:700;padding:7px 13px;border-radius:100px;background:#171C33;border:1px solid #262C48;">Questions: <b style="color:#F2617A">${d.qCount}</b></span>
+        ${d.accuracy ? `<span style="font-size:13px;font-weight:700;padding:7px 13px;border-radius:100px;background:#171C33;border:1px solid #262C48;">Accuracy: <b style="color:#5B8CFF">${escapeHtml(d.accuracy)}</b></span>` : ''}
+      </div>
+      ${d.weakTopic ? `<div style="font-size:13px;color:#A6ACC7;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:7px;"><span style="width:7px;height:7px;border-radius:50%;background:#B98CF2;flex-shrink:0;"></span> Weak topic flagged: <b style="color:#B98CF2">${escapeHtml(d.weakTopic)}</b></div>` : ''}
+      <div style="font-size:10.5px;font-weight:800;letter-spacing:0.06em;color:#6B7295;margin-bottom:6px;">TONIGHT'S REFLECTION</div>
+      <div style="font-size:14px;color:#A6ACC7;line-height:1.55;font-style:italic;font-family:'Fraunces',Georgia,serif;">${escapeHtml(d.noteLine)}</div>
+      <div style="margin-top:18px;font-size:11px;color:#6B7295;font-weight:600;letter-spacing:0.03em;">LOGGED WITH LEDGER</div>
+    </div>`;
+  }
+
+  async function shareCardAsImage(shareData){
     const btn = document.getElementById('shareImg');
-    const card = document.getElementById('shareCardInner');
-    if(!card) return;
     const originalLabel = btn ? btn.innerHTML : '';
     if(btn){ btn.disabled = true; btn.innerHTML = `<span class="ai-coach-spin">${ICONS.sparkle}</span> Rendering…`; }
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
+    host.innerHTML = buildShareCardStandaloneHtml(shareData);
+    document.body.appendChild(host);
     try{
       await loadHtml2Canvas();
+      const card = document.getElementById('shareCardStandalone');
       const canvas = await window.html2canvas(card, {
-        backgroundColor: getComputedStyle(document.body).getPropertyValue('--ink').trim() || '#0B0E1A',
+        backgroundColor: '#12162A',
         scale: Math.min(window.devicePixelRatio || 2, 3)
       });
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       if(!blob) throw new Error('Could not generate image');
-      const fileName = `ledger-${dateStr.replace(/[^\w]+/g,'-').toLowerCase()}.png`;
+      const fileName = `ledger-${shareData.dateStr.replace(/[^\w]+/g,'-').toLowerCase()}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
       if(navigator.canShare && navigator.canShare({ files: [file] })){
-        await navigator.share({ files: [file], title: 'Ledger', text: `Ledger — ${dateStr}` });
+        await navigator.share({ files: [file], title: 'Ledger', text: `Ledger — ${shareData.dateStr}` });
       } else {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -4188,6 +4222,7 @@
       if(err && err.name === 'AbortError'){ /* user cancelled the share sheet — not an error */ }
       else showToast(err.message || 'Could not create image');
     }finally{
+      document.body.removeChild(host);
       if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
     }
   }
