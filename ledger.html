@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Ledger — Daily Check-in</title>
-<meta name="description" content="An honest evening check-in for the NEET grind. Log discipline, practice, and one honest reflection a night — see the pattern next week.">
+<meta name="description" content="An honest evening check-in for NEET and JEE aspirants. Log discipline, practice, and one honest reflection a night — see the pattern next week.">
 
 <!-- Open Graph: controls the rich preview card WhatsApp, Instagram, -->
 <!-- Telegram, iMessage etc. build when this link is shared. Crawlers -->
@@ -13,16 +13,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ledger">
 <meta property="og:title" content="Ledger — Daily Check-in">
-<meta property="og:description" content="An honest evening check-in for the NEET grind. Log discipline, practice, and one honest reflection a night.">
+<meta property="og:description" content="An honest evening check-in for NEET and JEE aspirants. Log discipline, practice, and one honest reflection a night.">
 <meta property="og:image" content="https://ledger-zeta-nine.vercel.app/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Ledger — an honest evening check-in for the NEET grind">
+<meta property="og:image:alt" content="Ledger — an honest evening check-in for NEET and JEE aspirants">
 
 <!-- Twitter/X card (also used as a fallback by several other apps) -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Ledger — Daily Check-in">
-<meta name="twitter:description" content="An honest evening check-in for the NEET grind.">
+<meta name="twitter:description" content="An honest evening check-in for NEET and JEE aspirants.">
 <meta name="twitter:image" content="https://ledger-zeta-nine.vercel.app/og-image.png">
 
 <!-- Favicons / app icons -->
@@ -1940,6 +1940,19 @@
         <label for="authName">Your name</label>
         <input type="text" id="authName" placeholder="e.g. Rohan" maxlength="40" autocomplete="off">
       </div>
+      <div class="auth-field" id="authExamField" style="display:none">
+        <label>Which exam?</label>
+        <div class="mode-pick" id="authExamPick" style="margin:0">
+          <button type="button" class="mode-card selected" data-exam="neet">
+            <div class="mc-title">NEET</div>
+            <div class="mc-sub">Physics · Chemistry · Biology</div>
+          </button>
+          <button type="button" class="mode-card" data-exam="jee">
+            <div class="mc-title">JEE</div>
+            <div class="mc-sub">Physics · Chemistry · Maths</div>
+          </button>
+        </div>
+      </div>
       <div class="auth-field" id="authDobField" style="display:none">
         <label for="authDob">Date of birth</label>
         <input type="date" id="authDob" autocomplete="off">
@@ -2554,7 +2567,7 @@
     try{
       return Object.assign({
           theme: 'dark', quickMode: false, voiceEnabled: true,
-          targetScore: 600, baselineScore: 220,
+          examType: 'neet', targetScore: null, baselineScore: null,
           lastExportAt: null, backupBannerDismissedAt: null,
           dailyQuestionTarget: 40, density: 'comfortable', accent: 'amber',
           streakFreezeUsedMonth: null, streakFreezeDates: [],
@@ -2603,47 +2616,104 @@
   function getRecentMockSummary(limit){
     const list = loadMockTests().slice(0, limit || 5);
     if(!list.length) return null;
-    const avgPct = Math.round(100 * list.reduce((s,m) => s + (m.score / (m.maxScore||720)), 0) / list.length);
+    const avgPct = Math.round(100 * list.reduce((s,m) => s + (m.score / (m.maxScore||getExamConfig().maxScore)), 0) / list.length);
     return { list, avgPct };
   }
 
-  const DEFAULT_QUESTIONS = [
-    { id:'study_block', type:'mcq', section:'Discipline', q:"Did you complete the 9:00–10:30pm study block?", hint:"Be honest — half-attempts count as no.", options:["Yes, full block","Partial (15–60 min)","No, skipped it"], core:true },
-    { id:'morning_block', type:'mcq', section:'Discipline', q:"Did you get through the 8:00–9:30am self-study rep?", options:["Yes, full block","Partial","No, skipped it"], core:true },
-    { id:'wake_time', type:'mcq', section:'Discipline', q:"What time did you actually wake up?", options:["By 7:00am","7:00–8:00am","After 8:00am"], core:true },
-    { id:'sleep_time', type:'mcq', section:'Discipline', q:"What time did you fall asleep last night?", options:["By 11:00pm","11:00pm–12:30am","After 12:30am"] },
-    { id:'questions_solved', type:'stepper', section:'Study', q:"How many practice questions did you actually solve today?", hint:"Not read, not listened to — solved yourself.", unit:"questions", min:0, max:300, step:5, default:0, core:true },
-    { id:'accuracy_band', type:'mcq', section:'Study', q:"Of those, roughly how many did you get right?", hint:"Rough estimate is fine — this matters more than the raw count.", options:["Under 50%","50–75%","Over 75%"], core:true },
-    { id:'subject_focus', type:'mcq', section:'Study', q:"Which subject got most of today's practice time?", options:["Physics","Chemistry","Biology"] },
-    { id:'weak_topic', type:'text', section:'Study', q:"What's one topic you struggled with today?", hint:"One line is enough — chapter name or concept.", placeholder:"e.g. Rotational mechanics — torque direction confusion", multiline:false },
-    { id:'coaching_attention', type:'scale', section:'Study', q:"How present were you during today's Allen classes?", lowLabel:"Zoned out", highLabel:"Fully locked in" },
-    { id:'outside_food', type:'mcq', section:'Body', q:"Outside food or snacking today, beyond mess meals?", options:["None — mess only","Small snack","Yes, a full outside meal"] },
-    { id:'evening_walk', type:'mcq', section:'Body', q:"Did you take the post-dinner walk?", options:["Yes","Short version","No"] },
-    { id:'screen_time', type:'mcq', section:'Body', q:"Roughly how long did you spend gaming or on non-study screen time?", options:["Under 30 min","30 min – 2 hrs","Over 2 hrs"], core:true },
-    { id:'energy', type:'scale', section:'Body', q:"How was your energy level today overall?", lowLabel:"Drained", highLabel:"Sharp" },
-    { id:'mood_note', type:'text', section:'Reflection', q:"What's actually on your mind tonight?", hint:"Doubt, frustration, a win — whatever's true. This is for you, not a report card.", placeholder:"Write a few honest lines...", multiline:true },
-    { id:'tomorrow_one_thing', type:'text', section:'Reflection', q:"What's the one thing you want to fix tomorrow?", hint:"Pick one. Not five.", placeholder:"e.g. Actually start the 9pm block on time", multiline:false }
-  ];
+  // ========== Exam type (NEET / JEE) ==========
+  // Everything exam-specific — subjects, score scale, coaching-hours
+  // copy, AI prompt framing — is driven off this one config object so
+  // switching a user's exam type is a single settings.examType change,
+  // not a scavenger hunt through the file.
+  const EXAM_CONFIGS = {
+    neet: {
+      key: 'neet',
+      label: 'NEET',
+      fullName: 'National Eligibility cum Entrance Test',
+      subjects: ['Physics','Chemistry','Biology'],
+      subjectColors: { Physics:'#5B8CFF', Chemistry:'#2FD98A', Biology:'#B98CF2' },
+      subjectColorVars: ['--blue','--teal','--purple'],
+      maxScore: 720,
+      defaultBaseline: 220,
+      defaultTarget: 600,
+      marksPerSubject: 180,
+      goalLine: 'government medical college seat',
+      coachingLine: 'studying at Allen Coaching, Kota (coaching hours 2:00-8:15pm, hostel accommodation)',
+      dataBlockTitle: 'NEET DAILY CHECK-IN',
+      weightNote: 'NEET weights Physics, Chemistry and Biology equally (45 questions / 180 marks each)'
+    },
+    jee: {
+      key: 'jee',
+      label: 'JEE',
+      fullName: 'Joint Entrance Examination',
+      subjects: ['Physics','Chemistry','Mathematics'],
+      subjectColors: { Physics:'#5B8CFF', Chemistry:'#2FD98A', Mathematics:'#B98CF2' },
+      subjectColorVars: ['--blue','--teal','--purple'],
+      maxScore: 300,
+      defaultBaseline: 90,
+      defaultTarget: 250,
+      marksPerSubject: 100,
+      goalLine: 'IIT/NIT seat',
+      coachingLine: 'studying at Allen Coaching, Kota (coaching hours 2:00-8:15pm, hostel accommodation)',
+      dataBlockTitle: 'JEE DAILY CHECK-IN',
+      weightNote: 'JEE weights Physics, Chemistry and Mathematics equally (25 questions / 100 marks each)'
+    }
+  };
+  function getExamType(){
+    return (settings && settings.examType === 'jee') ? 'jee' : 'neet';
+  }
+  function getExamConfig(){
+    return EXAM_CONFIGS[getExamType()];
+  }
+  function getSubjects(){
+    return getExamConfig().subjects;
+  }
+
+  function buildDefaultQuestions(examKey){
+    const cfg = EXAM_CONFIGS[examKey] || EXAM_CONFIGS.neet;
+    return [
+      { id:'study_block', type:'mcq', section:'Discipline', q:"Did you complete the 9:00–10:30pm study block?", hint:"Be honest — half-attempts count as no.", options:["Yes, full block","Partial (15–60 min)","No, skipped it"], core:true },
+      { id:'morning_block', type:'mcq', section:'Discipline', q:"Did you get through the 8:00–9:30am self-study rep?", options:["Yes, full block","Partial","No, skipped it"], core:true },
+      { id:'wake_time', type:'mcq', section:'Discipline', q:"What time did you actually wake up?", options:["By 7:00am","7:00–8:00am","After 8:00am"], core:true },
+      { id:'sleep_time', type:'mcq', section:'Discipline', q:"What time did you fall asleep last night?", options:["By 11:00pm","11:00pm–12:30am","After 12:30am"] },
+      { id:'questions_solved', type:'stepper', section:'Study', q:"How many practice questions did you actually solve today?", hint:"Not read, not listened to — solved yourself.", unit:"questions", min:0, max:300, step:5, default:0, core:true },
+      { id:'accuracy_band', type:'mcq', section:'Study', q:"Of those, roughly how many did you get right?", hint:"Rough estimate is fine — this matters more than the raw count.", options:["Under 50%","50–75%","Over 75%"], core:true },
+      { id:'subject_focus', type:'mcq', section:'Study', q:"Which subject got most of today's practice time?", options: cfg.subjects.slice() },
+      { id:'weak_topic', type:'text', section:'Study', q:"What's one topic you struggled with today?", hint:"One line is enough — chapter name or concept.", placeholder: cfg.key === 'jee' ? "e.g. Definite integrals — limits substitution confusion" : "e.g. Rotational mechanics — torque direction confusion", multiline:false },
+      { id:'coaching_attention', type:'scale', section:'Study', q:"How present were you during today's Allen classes?", lowLabel:"Zoned out", highLabel:"Fully locked in" },
+      { id:'outside_food', type:'mcq', section:'Body', q:"Outside food or snacking today, beyond mess meals?", options:["None — mess only","Small snack","Yes, a full outside meal"] },
+      { id:'evening_walk', type:'mcq', section:'Body', q:"Did you take the post-dinner walk?", options:["Yes","Short version","No"] },
+      { id:'screen_time', type:'mcq', section:'Body', q:"Roughly how long did you spend gaming or on non-study screen time?", options:["Under 30 min","30 min – 2 hrs","Over 2 hrs"], core:true },
+      { id:'energy', type:'scale', section:'Body', q:"How was your energy level today overall?", lowLabel:"Drained", highLabel:"Sharp" },
+      { id:'mood_note', type:'text', section:'Reflection', q:"What's actually on your mind tonight?", hint:"Doubt, frustration, a win — whatever's true. This is for you, not a report card.", placeholder:"Write a few honest lines...", multiline:true },
+      { id:'tomorrow_one_thing', type:'text', section:'Reflection', q:"What's the one thing you want to fix tomorrow?", hint:"Pick one. Not five.", placeholder:"e.g. Actually start the 9pm block on time", multiline:false }
+    ];
+  }
+  // Kept for anything that still references DEFAULT_QUESTIONS directly —
+  // always reflects whichever exam is currently active.
+  function getDefaultQuestions(){ return buildDefaultQuestions(getExamType()); }
+  let DEFAULT_QUESTIONS = buildDefaultQuestions(getExamType());
 
   function loadQuestions(){
     try{
-      const raw = localStorage.getItem(QUESTIONS_KEY);
+      const raw = localStorage.getItem(QUESTIONS_KEY + ':' + getExamType());
       if(raw){
         const parsed = JSON.parse(raw);
         if(Array.isArray(parsed) && parsed.length){
           // Merge in any new default questions (e.g. accuracy_band) that a
           // previously-saved/customized question set predates, so existing
           // users' saved edits don't silently hide new built-in fields.
+          const defaults = getDefaultQuestions();
           const haveIds = new Set(parsed.map(q => q.id));
-          const missing = DEFAULT_QUESTIONS.filter(q => !haveIds.has(q.id));
+          const missing = defaults.filter(q => !haveIds.has(q.id));
           return missing.length ? parsed.concat(missing) : parsed;
         }
       }
     }catch(e){}
-    return JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+    return JSON.parse(JSON.stringify(getDefaultQuestions()));
   }
   function saveQuestions(qs){
-    try{ localStorage.setItem(QUESTIONS_KEY, JSON.stringify(qs)); }catch(e){}
+    try{ localStorage.setItem(QUESTIONS_KEY + ':' + getExamType(), JSON.stringify(qs)); }catch(e){}
   }
   let allQuestions = loadQuestions();
   function getActiveQuestions(){
@@ -2807,31 +2877,34 @@
     }
     return null;
   }
-  // NEET weights Physics, Chemistry and Biology equally (45 questions /
-  // 180 marks each), so a healthy focus split over a couple of weeks
-  // should land roughly a third each. Flag a subject that's either had
-  // zero focus days, or is clearly underweighted (<15% of logged days
-  // once there's enough history to judge that fairly).
+  // Both NEET and JEE weight their subjects equally (see EXAM_CONFIGS),
+  // so a healthy focus split over a couple of weeks should land roughly
+  // evenly. Flag a subject that's either had zero focus days, or is
+  // clearly underweighted (<15% of logged days once there's enough
+  // history to judge that fairly).
   function computeSubjectNudge(){
     const hist = loadHistory().slice(0, 14);
     if(hist.length < 5) return null;
-    const counts = { Physics:0, Chemistry:0, Biology:0 };
+    const cfg = getExamConfig();
+    const subjects = cfg.subjects;
+    const counts = {};
+    subjects.forEach(s => counts[s] = 0);
     let total = 0;
     hist.forEach(h => {
       const s = (h.state && h.state.subject_focus) || '';
       if(counts[s] !== undefined){ counts[s]++; total++; }
     });
     if(!total) return null;
-    for(const name of ['Physics','Chemistry','Biology']){
+    for(const name of subjects){
       if(counts[name] === 0){
-        return `<b>${name}</b> hasn’t had a focus day in your last ${hist.length} logs — NEET weights it equally with the others.`;
+        return `<b>${name}</b> hasn’t had a focus day in your last ${hist.length} logs — ${cfg.label} weights it equally with the others.`;
       }
     }
     if(hist.length >= 8){
-      for(const name of ['Physics','Chemistry','Biology']){
+      for(const name of subjects){
         const pct = counts[name] / total;
         if(pct < 0.15){
-          return `<b>${name}</b> is only ${Math.round(pct*100)}% of your recent focus days — worth a rebalance since it carries equal NEET weight.`;
+          return `<b>${name}</b> is only ${Math.round(pct*100)}% of your recent focus days — worth a rebalance since it carries equal ${cfg.label} weight.`;
         }
       }
     }
@@ -3014,6 +3087,71 @@
     }, 130);
   }
 
+  // ---------- In-app back/history handling ----------
+  // Single-page app inside a PWA: without this, the phone's back
+  // gesture/button has nothing to "undo" and the OS closes the app
+  // instead — losing whatever check-in was in progress. Every real
+  // navigation (view change, check-in question, sidebar, modal) pushes
+  // a state entry here; the browser's back action pops it and we
+  // reconstruct that screen instead of letting the browser actually
+  // navigate. The very first entry (pushed once below) is the floor:
+  // back from Home with nothing open is the only case that's allowed
+  // to fall through to actually closing the app.
+  let _navSuppressPush = false; // true while replaying a popstate, so we don't re-push what we're already un-doing
+  function navPush(state){
+    if(_navSuppressPush) return;
+    try{ history.pushState(Object.assign({ _ledgerNav: true }, state), ''); }catch(e){}
+  }
+  function navReplace(state){
+    try{ history.replaceState(Object.assign({ _ledgerNav: true }, state), ''); }catch(e){}
+  }
+  (function initNavFloor(){
+    try{ history.replaceState({ _ledgerNav: true, kind: 'home' }, ''); }catch(e){}
+  })();
+  window.addEventListener('popstate', (e) => {
+    const s = e.state;
+    // No state (or a non-Ledger state, e.g. the very first real page
+    // load before we replaced it) — nothing we can reconstruct, so let
+    // it behave like normal browser back.
+    if(!s || !s._ledgerNav) return;
+    _navSuppressPush = true;
+    try{
+      // An open sidebar or modal takes priority: back closes the
+      // overlay and stays on the screen underneath, matching what a
+      // native app's back button does with a sheet/dialog open.
+      if(document.getElementById('sidebar').classList.contains('open')){
+        closeSidebar();
+        return;
+      }
+      if(document.getElementById('modalOverlay').classList.contains('open')){
+        closeModal();
+        return;
+      }
+      if(s.kind === 'home'){
+        goView('home');
+      } else if(s.kind === 'view'){
+        goView(s.view);
+      } else if(s.kind === 'checkin-welcome'){
+        goView('checkin');
+      } else if(s.kind === 'checkin-question'){
+        currentView = 'checkin';
+        checkinMode = s.checkinMode || 'new';
+        editDateKey = s.editDateKey || null;
+        idx = s.idx || 0;
+        setBottomNav('checkin');
+        showProgress(true);
+        document.getElementById('brandSub').textContent = 'Check-in';
+        renderQuestion();
+      } else if(s.kind === 'checkin-summary'){
+        currentView = 'checkin';
+        setBottomNav('checkin');
+        renderSummary();
+      }
+    } finally {
+      _navSuppressPush = false;
+    }
+  });
+
   function goView(view, opts){
     currentView = view;
     setBottomNav(view === 'checkin' ? 'checkin' : view);
@@ -3025,6 +3163,11 @@
       view === 'monthly' ? 'Monthly' :
       view === 'settings' ? 'Settings' :
       view === 'home' ? 'Home' : 'Check-in';
+
+    if(view === 'home') navPush({ kind: 'home' });
+    else if(view !== 'checkin') navPush({ kind: 'view', view });
+    // 'checkin' pushes its own more specific state (welcome/question)
+    // below, once we know whether it's a fresh start or an edit.
 
     transitionToView(() => {
       if(view === 'home') renderHome();
@@ -3040,6 +3183,7 @@
           state = {};
           idx = 0;
         }
+        navPush({ kind: 'checkin-welcome' });
         renderWelcomeCheckin();
       }
     else if(view === 'trends') renderTrends();
@@ -3065,8 +3209,12 @@
   function openModal(html){
     modal.innerHTML = html;
     modalOverlay.classList.add('open');
+    navPush({ kind: 'modal' });
   }
-  function closeModal(){ modalOverlay.classList.remove('open'); }
+  function closeModal(){
+    modalOverlay.classList.remove('open');
+    if(!_navSuppressPush) history.back();
+  }
 
   function showToast(msg, ms){
     const t = document.getElementById('appToast');
@@ -3470,6 +3618,7 @@
     const qs = getActiveQuestions();
     const q = qs[idx];
     if(!q){ renderSummary(); return; }
+    navPush({ kind: 'checkin-question', idx, checkinMode, editDateKey });
 
     const wrap = document.createElement('div');
     wrap.className = 'qwrap';
@@ -3587,7 +3736,7 @@
     }
 
     const backBtn = document.getElementById('backBtn');
-    if(backBtn) backBtn.onclick = () => { idx = Math.max(0, idx-1); renderQuestion(); };
+    if(backBtn) backBtn.onclick = () => { if(!_navSuppressPush) history.back(); };
     const nextBtn = document.getElementById('nextBtn');
     attachRipple(nextBtn);
     nextBtn.classList.add('shine');
@@ -3656,7 +3805,7 @@
       const tag = (e.target && e.target.tagName) || '';
       const typing = tag === 'INPUT' || tag === 'TEXTAREA';
       if(e.key === 'Escape'){
-        if(idx > 0){ e.preventDefault(); idx = Math.max(0, idx-1); renderQuestion(); }
+        if(idx > 0){ e.preventDefault(); history.back(); }
         return;
       }
       if(typing) return;
@@ -3695,7 +3844,7 @@
       const dy = e.changedTouches[0].clientY - startY;
       if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
       if(dx < 0 && canAdvance()) goNext();
-      else if(dx > 0 && idx > 0){ idx = Math.max(0, idx-1); renderQuestion(); }
+      else if(dx > 0 && idx > 0){ history.back(); }
     }, { passive: true });
   }
 
@@ -3758,8 +3907,11 @@
 
   function buildDataBlock(dateObj, st){
     const dateStr = dateObj.toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const cfg = getExamConfig();
+    const baseline = settings.baselineScore || cfg.defaultBaseline;
+    const target = settings.targetScore || cfg.defaultTarget;
     const lines = [];
-    lines.push(`NEET DAILY CHECK-IN — ${dateStr}`);
+    lines.push(`${cfg.dataBlockTitle} — ${dateStr}`);
     lines.push('='.repeat(40));
     lines.push('');
     let currentSection = null;
@@ -3773,9 +3925,9 @@
     lines.push('');
     lines.push('='.repeat(40));
     lines.push('CONTEXT FOR ANALYSIS:');
-    lines.push('This is a daily self-report from an 18-year-old NEET aspirant studying at');
-    lines.push('Allen Coaching, Kota (coaching hours 2:00-8:15pm, hostel accommodation).');
-    lines.push('Current baseline NEET score: ' + (settings.baselineScore||220) + '. Target score: ' + (settings.targetScore||600) + '. Goal: government medical college seat.');
+    lines.push(`This is a daily self-report from an 18-year-old ${cfg.label} aspirant`);
+    lines.push(cfg.coachingLine.charAt(0).toUpperCase() + cfg.coachingLine.slice(1) + '.');
+    lines.push(`Current baseline ${cfg.label} score: ` + baseline + '. Target score: ' + target + '. Goal: ' + cfg.goalLine + '.');
     lines.push('Recovering from a low-discipline period (passive class attendance, no');
     lines.push('practice reps, irregular sleep, weight gain, acne) starting a structured');
     lines.push('routine: 8-9:30am and 9-10:30pm daily study blocks, mess-only food on');
@@ -3811,6 +3963,7 @@
   function renderSummary(){
     showProgress(true);
     updateProgress();
+    navPush({ kind: 'checkin-summary' });
     const disc = computeDisciplineFromState(state);
     const discInfo = scoreLabel(disc.score, disc.max || 1);
     const qCount = state.questions_solved || 0;
@@ -3889,7 +4042,9 @@
       setTimeout(() => { copyBtn.innerHTML = ICONS.copy + ' Copy data'; copyBtn.classList.remove('copied'); }, 1800);
     };
     document.getElementById('restartBtn').onclick = () => {
-      state = {}; idx = 0; renderWelcomeCheckin();
+      state = {}; idx = 0;
+      navPush({ kind: 'checkin-welcome' });
+      renderWelcomeCheckin();
     };
     document.getElementById('homeBtn').onclick = () => goView('home');
     const shareBtn = document.getElementById('shareBtn');
@@ -3919,6 +4074,7 @@
   // topics, subject balance vs NEET's equal weighting, and recent mock
   // performance so the AI can reason about patterns, not just today.
   function buildWeeklyContextBlock(){
+    const cfg = getExamConfig();
     const lines = [];
     const revision = computeWeakTopicRevisionList(5);
     if(revision.length){
@@ -3926,7 +4082,8 @@
       revision.forEach(item => lines.push(`- ${item.label} (×${item.count}, last on ${item.lastDateKey})`));
     }
     const hist = loadHistory().slice(0, 14);
-    const subjCounts = { Physics:0, Chemistry:0, Biology:0 };
+    const subjCounts = {};
+    cfg.subjects.forEach(s => subjCounts[s] = 0);
     let subjTotal = 0;
     hist.forEach(h => {
       const s = (h.state && h.state.subject_focus) || '';
@@ -3934,8 +4091,8 @@
     });
     if(subjTotal){
       lines.push('');
-      lines.push(`SUBJECT FOCUS BALANCE (last ${hist.length} logged days — NEET weights Physics/Chemistry/Biology equally, 180 marks each):`);
-      ['Physics','Chemistry','Biology'].forEach(name => {
+      lines.push(`SUBJECT FOCUS BALANCE (last ${hist.length} logged days — ${cfg.weightNote}):`);
+      cfg.subjects.forEach(name => {
         const pct = Math.round(100 * subjCounts[name] / subjTotal);
         lines.push(`- ${name}: ${subjCounts[name]} focus days (${pct}%)`);
       });
@@ -3944,17 +4101,19 @@
     if(mockSummary){
       lines.push('');
       lines.push(`RECENT MOCK TESTS (last ${mockSummary.list.length}, avg ${mockSummary.avgPct}%):`);
-      mockSummary.list.forEach(m => lines.push(`- ${m.dateKey}: ${m.score}/${m.maxScore||720}${m.note ? ' — ' + m.note : ''}`));
+      mockSummary.list.forEach(m => lines.push(`- ${m.dateKey}: ${m.score}/${m.maxScore||cfg.maxScore}${m.note ? ' — ' + m.note : ''}`));
     }
     return lines.length ? lines.join('\n') : '';
   }
 
   function buildAiPrompt(dataBlock){
+    const cfg = getExamConfig();
     const weeklyContext = buildWeeklyContextBlock();
+    const subjList = cfg.subjects.slice(0, -1).join(', ') + ' and ' + cfg.subjects[cfg.subjects.length-1];
     return [
-      "You are a calm, honest coach for a NEET (medical entrance exam)",
-      "aspirant. NEET has three equally-weighted subjects — Physics,",
-      "Chemistry, Biology — each 180 marks (45 questions), so treat subject",
+      `You are a calm, honest coach for a ${cfg.label} (${cfg.fullName})`,
+      `aspirant. ${cfg.label} has three equally-weighted subjects — ${subjList}`,
+      `— each ${cfg.marksPerSubject} marks, so treat subject`,
       "imbalance as a real issue, not a minor note. More practice questions",
       "solved is only good news if accuracy holds up alongside it — weigh",
       "volume and accuracy together, not volume alone. If recurring weak",
@@ -4317,8 +4476,8 @@
     });
     const recurring = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]);
 
-    const subjectColors = { Physics:'#5B8CFF', Chemistry:'#2FD98A', Biology:'#B98CF2' };
-    const subjectRows = ['Physics','Chemistry','Biology'].map(name => {
+    const subjectColors = getExamConfig().subjectColors;
+    const subjectRows = getSubjects().map(name => {
       const c = subjectCounts[name] || 0;
       const pct = Math.round(100 * c / subjTotal);
       return `<div class="wr-subj-row">
@@ -4463,7 +4622,9 @@
     const last7 = hist.slice(-7);
 
     // subject breakdown last 30
-    const subjectCounts = { Physics:0, Chemistry:0, Biology:0 };
+    const subjects = getSubjects();
+    const subjectCounts = {};
+    subjects.forEach(s => subjectCounts[s] = 0);
     last30.forEach(h => {
       const s = (h.state && h.state.subject_focus) || '';
       if(subjectCounts[s] !== undefined) subjectCounts[s]++;
@@ -4510,7 +4671,7 @@
         <div class="chart-wrap">
           <div class="chart-title">Subject focus (last ${Math.min(30, last30.length)} logged days)</div>
           <div class="subject-bars">
-            ${['Physics','Chemistry','Biology'].map((name,i) => {
+            ${subjects.map((name,i) => {
               const c = subjectCounts[name];
               const pct = Math.round(100 * c / subjTotal);
               const colors = ['var(--blue)','var(--teal)','var(--purple)'];
@@ -4542,7 +4703,7 @@
     }
     if(mockList.length){
       const mc = document.getElementById('mockChart');
-      if(mc) drawLineChart(mc, mockList.map(m => Math.round(100 * m.score / (m.maxScore||720))), 'purple');
+      if(mc) drawLineChart(mc, mockList.map(m => Math.round(100 * m.score / (m.maxScore||getExamConfig().maxScore))), 'purple');
     }
     animateHeadline(stage.querySelector('.section-title'));
     stage.querySelectorAll('.chart-wrap, .heatmap-wrap, .traj-card').forEach((el,i) => {
@@ -4593,8 +4754,9 @@
   }
 
   function buildTrajectoryHtml(){
-    const target = settings.targetScore || 600;
-    const baseline = settings.baselineScore || 220;
+    const trajCfg = getExamConfig();
+    const target = settings.targetScore || trajCfg.defaultTarget;
+    const baseline = settings.baselineScore || trajCfg.defaultBaseline;
     const hist = loadHistory().slice(0, 14);
     if(hist.length < 3){
       return `<div class="traj-card"><div class="traj-label">Goal trajectory</div><div class="traj-line">Target <b>${target}</b> · baseline <b>${baseline}</b>. Log a few more days for a rough pace estimate.</div></div>`;
@@ -4723,7 +4885,9 @@
     }
 
     // subject last 7
-    const subjectCounts = { Physics:0, Chemistry:0, Biology:0 };
+    const weeklySubjects = getSubjects();
+    const subjectCounts = {};
+    weeklySubjects.forEach(s => subjectCounts[s] = 0);
     logged.forEach(d => {
       const s = (d.entry.state && d.entry.state.subject_focus) || '';
       if(subjectCounts[s] !== undefined) subjectCounts[s]++;
@@ -4759,7 +4923,7 @@
         <div class="chart-wrap">
           <div class="chart-title">Subject focus this week</div>
           <div class="subject-bars">
-            ${['Physics','Chemistry','Biology'].map((name,i) => {
+            ${weeklySubjects.map((name,i) => {
               const c = subjectCounts[name];
               const pct = Math.round(100 * c / subjTotal);
               const colors = ['var(--blue)','var(--teal)','var(--purple)'];
@@ -4863,6 +5027,21 @@
           </div>
         </div>
 
+        <div class="settings-section" id="examSection">
+          <h3>Exam</h3>
+          <p class="section-sub" style="margin-bottom:10px">Switch which exam this check-in is built for. Questions, subjects, score scale and AI feedback all follow this.</p>
+          <div class="mode-pick">
+            <button type="button" class="mode-card ${getExamType()==='neet'?'selected':''}" data-exam="neet">
+              <div class="mc-title">NEET</div>
+              <div class="mc-sub">Physics · Chemistry · Biology</div>
+            </button>
+            <button type="button" class="mode-card ${getExamType()==='jee'?'selected':''}" data-exam="jee">
+              <div class="mc-title">JEE</div>
+              <div class="mc-sub">Physics · Chemistry · Maths</div>
+            </button>
+          </div>
+        </div>
+
         <div class="settings-section" id="accountSection">
           <h3>Account & sync</h3>
         </div>
@@ -4871,7 +5050,7 @@
 
         <div class="settings-section" id="mockSection">
           <h3>Mock tests</h3>
-          <div class="section-sub" style="margin-bottom:10px">Full NEET mocks, tracked separately from daily practice — this is what shows if practice volume is actually converting.</div>
+          <div class="section-sub" style="margin-bottom:10px">Full ${getExamConfig().label} mocks, tracked separately from daily practice — this is what shows if practice volume is actually converting.</div>
           <div id="mockListWrap"></div>
           <div class="navrow" style="margin-top:10px">
             <button class="btn btn-primary" id="doLogMock" style="flex:1">Log a mock score</button>
@@ -4920,13 +5099,13 @@
 
         <div class="settings-section">
           <h3>Goals & volume</h3>
-          <p class="section-sub" style="margin-bottom:10px">Baseline / target NEET scores and daily question target.</p>
+          <p class="section-sub" style="margin-bottom:10px">Baseline / target ${getExamConfig().label} scores (out of ${getExamConfig().maxScore}) and daily question target.</p>
           <div class="goal-input-row" style="margin-bottom:8px">
-            <input type="number" id="baselineScore" min="0" max="720" value="${settings.baselineScore||220}" placeholder="Baseline">
+            <input type="number" id="baselineScore" min="0" max="${getExamConfig().maxScore}" value="${settings.baselineScore||getExamConfig().defaultBaseline}" placeholder="Baseline">
             <span style="font-size:12px;color:var(--text-faint);font-weight:600;width:70px">Baseline</span>
           </div>
           <div class="goal-input-row" style="margin-bottom:8px">
-            <input type="number" id="targetScore" min="0" max="720" value="${settings.targetScore||600}" placeholder="Target">
+            <input type="number" id="targetScore" min="0" max="${getExamConfig().maxScore}" value="${settings.targetScore||getExamConfig().defaultTarget}" placeholder="Target">
             <span style="font-size:12px;color:var(--text-faint);font-weight:600;width:70px">Target</span>
           </div>
           <div class="goal-input-row">
@@ -4985,6 +5164,31 @@
       </div>
     `;
 
+    // Exam switcher — swapping exams reloads the whole question bank
+    // (each exam keeps its own saved customizations under a separate
+    // localStorage key) and clamps any goal scores that no longer fit
+    // the new exam's max, so a leftover JEE target of 250 doesn't sit
+    // there silently reading as "250/720" after switching to NEET.
+    stage.querySelectorAll('[data-exam]').forEach(btn => {
+      btn.onclick = async () => {
+        const newExam = btn.dataset.exam;
+        if(newExam === getExamType()) return;
+        const ok = await appConfirm({
+          title: `Switch to ${EXAM_CONFIGS[newExam].label}?`,
+          body: `Questions, subjects, and AI feedback will switch to ${EXAM_CONFIGS[newExam].label}. Your ${getExamConfig().label} question set and history stay saved and come back if you switch back.`,
+          okLabel: 'Switch'
+        });
+        if(!ok) return;
+        settings.examType = newExam;
+        settings.baselineScore = null;
+        settings.targetScore = null;
+        saveSettings(settings);
+        allQuestions = loadQuestions();
+        showToast(`Switched to ${EXAM_CONFIGS[newExam].label}`);
+        renderSettings();
+      };
+    });
+
     document.getElementById('togQuick').onclick = function(){
       settings.quickMode = !settings.quickMode;
       this.classList.toggle('on', settings.quickMode);
@@ -5032,8 +5236,9 @@
       const b = parseInt(document.getElementById('baselineScore').value, 10);
       const t = parseInt(document.getElementById('targetScore').value, 10);
       const d = parseInt(document.getElementById('dailyTarget').value, 10);
-      if(!isNaN(b)) settings.baselineScore = Math.max(0, Math.min(720, b));
-      if(!isNaN(t)) settings.targetScore = Math.max(0, Math.min(720, t));
+      const maxAllowed = getExamConfig().maxScore;
+      if(!isNaN(b)) settings.baselineScore = Math.max(0, Math.min(maxAllowed, b));
+      if(!isNaN(t)) settings.targetScore = Math.max(0, Math.min(maxAllowed, t));
       if(!isNaN(d)) settings.dailyQuestionTarget = Math.max(5, Math.min(200, d));
       saveSettings(settings);
       const btn = document.getElementById('saveScores');
@@ -5087,11 +5292,11 @@
       return;
     }
     wrap.innerHTML = mocks.slice(0, 8).map(m => {
-      const pct = Math.round(100 * m.score / (m.maxScore || 720));
+      const pct = Math.round(100 * m.score / (m.maxScore || getExamConfig().maxScore));
       const dateLabel = new Date(m.dateKey + 'T12:00:00').toLocaleDateString(undefined, { day:'numeric', month:'short' });
       return `<div class="mock-row" data-id="${escapeAttr(m.id)}">
         <div class="mock-row-main">
-          <div class="mock-score">${m.score}<span class="mock-max">/${m.maxScore||720}</span></div>
+          <div class="mock-score">${m.score}<span class="mock-max">/${m.maxScore||getExamConfig().maxScore}</span></div>
           <div class="mock-meta">${dateLabel} · ${pct}%${m.note ? ' · ' + escapeHtml(m.note) : ''}</div>
         </div>
         <button type="button" class="mock-del" data-id="${escapeAttr(m.id)}" aria-label="Delete mock">${ICONS.x}</button>
@@ -5114,7 +5319,7 @@
         <input type="date" class="freetext" id="mockDateIn" style="min-height:unset" value="${todayKey}">
         <div style="display:flex;gap:8px">
           <input type="number" inputmode="numeric" class="freetext" id="mockScoreIn" placeholder="Score (e.g. 480)" style="min-height:unset;flex:1">
-          <input type="number" inputmode="numeric" class="freetext" id="mockMaxIn" placeholder="Out of" value="720" style="min-height:unset;width:110px">
+          <input type="number" inputmode="numeric" class="freetext" id="mockMaxIn" placeholder="Out of" value="${getExamConfig().maxScore}" style="min-height:unset;width:110px">
         </div>
         <input type="text" class="freetext" id="mockNoteIn" placeholder="Optional note — e.g. Allen full test 12" maxlength="60" style="min-height:unset">
       </div>
@@ -5127,7 +5332,7 @@
     document.getElementById('dlgOk').onclick = () => {
       const dateKey = document.getElementById('mockDateIn').value || todayKey;
       const score = parseInt(document.getElementById('mockScoreIn').value, 10);
-      const maxScore = parseInt(document.getElementById('mockMaxIn').value, 10) || 720;
+      const maxScore = parseInt(document.getElementById('mockMaxIn').value, 10) || getExamConfig().maxScore;
       const note = document.getElementById('mockNoteIn').value.trim();
       if(isNaN(score) || score < 0){ showToast('Enter a valid score'); return; }
       addMockTest({ dateKey, score, maxScore, note });
@@ -5540,6 +5745,7 @@
     sidebarOverlay.classList.add('open');
     const body = document.getElementById('sidebarBody');
     if(body){ body.classList.add('reveal-stagger'); }
+    navPush({ kind: 'sidebar' });
   }
   function closeSidebar(){
     sidebar.classList.remove('open');
@@ -5551,6 +5757,7 @@
     sidebarOverlay.addEventListener('transitionend', done);
     // fallback
     setTimeout(done, 420);
+    if(!_navSuppressPush) history.back();
   }
   menuBtn.addEventListener('click', () => {
     if(sidebar.classList.contains('open')) closeSidebar(); else openSidebar();
@@ -5648,8 +5855,10 @@
   const authSub = document.getElementById('authSub');
   const authPinHint = document.getElementById('authPinHint');
   const authDobField = document.getElementById('authDobField');
+  const authExamField = document.getElementById('authExamField');
   const authTabIndicator = document.getElementById('authTabIndicator');
   let authMode = 'signin';
+  let signupExamChoice = 'neet';
 
   function showAuthError(msg){
     authError.textContent = msg;
@@ -5675,16 +5884,31 @@
       authPinHint.textContent = 'Choose 6 digits and remember them.';
       authSubmit.textContent = 'Sign up';
       authDobField.style.display = '';
+      if(authExamField) authExamField.style.display = '';
     } else {
       authTitle.textContent = 'Welcome back';
       authSub.textContent = 'Sign in to sync your check-ins across devices.';
       authPinHint.textContent = 'Enter the 6-digit PIN you chose when you signed up.';
       authSubmit.textContent = 'Sign in';
       authDobField.style.display = 'none';
+      if(authExamField) authExamField.style.display = 'none';
     }
   }
   document.getElementById('tabSignin').onclick = () => setAuthMode('signin');
   document.getElementById('tabSignup').onclick = () => setAuthMode('signup');
+
+  // Exam choice on the signup form — just tracks a local var until
+  // submit; the whole card re-renders via setAuthMode on tab switches,
+  // but authExamPick itself is a stable node so wiring it once here is fine.
+  const authExamPick = document.getElementById('authExamPick');
+  if(authExamPick){
+    authExamPick.querySelectorAll('[data-exam]').forEach(btn => {
+      btn.onclick = () => {
+        signupExamChoice = btn.dataset.exam;
+        authExamPick.querySelectorAll('[data-exam]').forEach(b => b.classList.toggle('selected', b === btn));
+      };
+    });
+  }
 
   // Live PIN dots: fill a row of dots as digits are typed, for both the
   // sign-in/up PIN field and the forgot-PIN "new PIN" field.
@@ -5781,6 +6005,18 @@
       }
       if(error) throw new Error(error.message || 'Something went wrong. Try again.');
       saveAuth({ userId: data.id, name: data.username });
+      if(authMode === 'signup'){
+        // Exam type is stored locally (settings) rather than in Supabase —
+        // the signup/signin RPCs don't carry it, so it won't yet follow
+        // this account to a second device. Applying it here at least means
+        // the browser that created the account starts on the right exam
+        // immediately instead of defaulting to NEET.
+        settings.examType = signupExamChoice;
+        settings.baselineScore = null;
+        settings.targetScore = null;
+        saveSettings(settings);
+        allQuestions = loadQuestions();
+      }
       await migrateLocalHistoryToAccount(data.id);
       authSubmit.textContent = authMode === 'signup' ? 'Account created ✓' : 'Signed in ✓';
       authSubmit.classList.add('success');
@@ -6174,7 +6410,16 @@
         if(!best || q > ((best.payload&&best.payload.questionsSolved)||0)) best = r;
         if(!worst || q < ((worst.payload&&worst.payload.questionsSolved)||0)) worst = r;
       });
-      const subjectCounts = { Physics:0, Chemistry:0, Biology:0 };
+      // The mentor view has no signed-in session, so it can't read the
+      // student's local settings.examType — instead infer which subject
+      // set actually appears in the logged data (falls back to NEET's
+      // Physics/Chemistry/Biology if nothing has been logged yet).
+      const mentorSubjects = (rows.some(r => (r.payload && r.payload.state && r.payload.state.subject_focus) === 'Mathematics'))
+        ? EXAM_CONFIGS.jee.subjects
+        : EXAM_CONFIGS.neet.subjects;
+      const mentorSubjectColors = (mentorSubjects === EXAM_CONFIGS.jee.subjects) ? EXAM_CONFIGS.jee.subjectColors : EXAM_CONFIGS.neet.subjectColors;
+      const subjectCounts = {};
+      mentorSubjects.forEach(s => subjectCounts[s] = 0);
       rows.forEach(r => {
         const s = (r.payload && r.payload.state && r.payload.state.subject_focus) || '';
         if(subjectCounts[s] !== undefined) subjectCounts[s]++;
@@ -6186,7 +6431,7 @@
         if(t) topicCounts[t] = (topicCounts[t]||0) + 1;
       });
       const recurring = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]);
-      const subjectColors = { Physics:'#5B8CFF', Chemistry:'var(--teal)', Biology:'var(--purple)' };
+      const subjectColors = mentorSubjectColors;
 
       const rowsHtml = rows.length ? rows.map(r => {
         const p = r.payload || {};
@@ -6202,7 +6447,7 @@
       const subjectRows = daysLogged >= 2 ? `
         <div style="background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:18px 20px;margin-bottom:22px;box-shadow:var(--shadow-sm);">
           <div style="font-size:11px;color:var(--text-faint);font-weight:800;letter-spacing:0.05em;margin-bottom:14px;">SUBJECT FOCUS THIS WEEK</div>
-          ${['Physics','Chemistry','Biology'].map(s => {
+          ${mentorSubjects.map(s => {
             const c = subjectCounts[s] || 0;
             const pct = Math.round(100*c/subjTotal);
             return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
