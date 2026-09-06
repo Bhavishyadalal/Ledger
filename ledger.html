@@ -188,7 +188,7 @@
   .brand-text b{
     color: var(--text); font-weight: 700; display:block;
     font-size: 14.5px; letter-spacing: -0.015em;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; flex-shrink: 0;
   }
   .brand-text span{
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1204,15 +1204,23 @@
   .accent-swatch[data-a="gold"]{ background: #F2C94C; }
 
 
+  @media (max-width: 480px){
+    .topbar{ padding: 8px 10px; gap: 6px; }
+  }
   @media (max-width: 400px){
     .offline-chip span{ display:none; }
     .offline-chip{ padding: 6px; }
-    .brand-text span{ max-width: 110px; }
-    .streak-chip{ padding: 6px 9px; }
-    .topbar-right{ gap: 5px; }
+    .brand-text span{ max-width: 80px; }
+    .streak-chip{ padding: 5px 8px; }
+    .topbar-right{ gap: 4px; }
+    .icon-btn{ width: 32px; height: 32px; }
   }
   @media (max-width: 360px){
     .offline-chip{ display: none !important; }
+    .streak-chip{ padding: 5px 7px; font-size: 11px; }
+  }
+  @media (max-width: 340px){
+    .brand-text span{ display: none; }
   }
 
 
