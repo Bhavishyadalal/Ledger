@@ -6877,6 +6877,11 @@
       const canvas = document.getElementById('bgCanvas');
       const ctx = canvas.getContext('2d');
       let W, H, dpr;
+      // These need to exist before resize()/drawBg() are defined and called
+      // below, since resize() checks them — declared here, not further down,
+      // to avoid a temporal-dead-zone ReferenceError on the very first call.
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobileFx = matchMedia('(hover:none), (pointer:coarse)').matches;
       // Shared debounce for canvas resize handlers below. Resize events can
       // fire dozens of times a second during a drag-resize or when mobile
       // browser chrome shows/hides — and each canvas resize() reallocates
@@ -6941,13 +6946,6 @@
         { x: 0.85, y: 0.75, r: 0.30, color: '16,185,129', speed: 0.00009, phase: 2 },
         { x: 0.6, y: 0.3, r: 0.22, color: '139,92,246', speed: 0.00015, phase: 4 },
       ];
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // Same touch/mobile check the particle-field and hover-fx code below
-      // already uses — pulled up here so the background-orb canvas loop can
-      // gate on it too. A drifting full-viewport gradient repainted every
-      // frame is a real, avoidable cost on phone-class hardware where the
-      // effect is barely noticeable anyway (small screen, glanced at briefly).
-      const isMobileFx = matchMedia('(hover:none), (pointer:coarse)').matches;
       // Cache the fill color per theme instead of calling getComputedStyle()
       // inside the per-frame draw loop — a style recalc 60x/sec here was a
       // real cost for zero benefit, since this value only changes on toggle.
@@ -6963,6 +6961,7 @@
         ctx.clearRect(0, 0, W, H);
         ctx.fillStyle = _bgFillCache;
         ctx.fillRect(0, 0, W, H);
+        const isLight = document.body.dataset.theme === 'light';
         orbs.forEach(o => {
           const dx = Math.sin(t * o.speed + o.phase) * 0.12;
           const dy = Math.cos(t * o.speed * 0.8 + o.phase) * 0.10;
