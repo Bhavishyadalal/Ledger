@@ -953,8 +953,16 @@
   /* Accent presets via data-accent */
   [data-accent="teal"]{ --amber: #3DB8AD; --amber-soft: rgba(61,184,173,0.14); }
   [data-accent="violet"]{ --amber: #9B7EDE; --amber-soft: rgba(155,126,222,0.14); }
+  [data-accent="rose"]{ --amber: #E37D9A; --amber-soft: rgba(227,125,154,0.14); }
+  [data-accent="sky"]{ --amber: #5FA8E8; --amber-soft: rgba(95,168,232,0.14); }
+  [data-accent="emerald"]{ --amber: #4FBE7E; --amber-soft: rgba(79,190,126,0.14); }
+  [data-accent="gold"]{ --amber: #D8B24C; --amber-soft: rgba(216,178,76,0.14); }
   [data-theme="light"][data-accent="teal"]{ --amber: #268F85; --amber-soft: rgba(38,143,133,0.12); }
   [data-theme="light"][data-accent="violet"]{ --amber: #7558C4; --amber-soft: rgba(117,88,196,0.12); }
+  [data-theme="light"][data-accent="rose"]{ --amber: #C24870; --amber-soft: rgba(194,72,112,0.12); }
+  [data-theme="light"][data-accent="sky"]{ --amber: #2E6FBE; --amber-soft: rgba(46,111,190,0.12); }
+  [data-theme="light"][data-accent="emerald"]{ --amber: #22935B; --amber-soft: rgba(34,147,91,0.12); }
+  [data-theme="light"][data-accent="gold"]{ --amber: #A87F1E; --amber-soft: rgba(168,127,30,0.12); }
 
   /* Share card modal content */
   .share-card{
@@ -973,7 +981,7 @@
   @keyframes finishPop{ 0%{ transform: scale(0.92); opacity: 0.6; } 100%{ transform: scale(1); opacity: 1; } }
 
   /* Accent swatches */
-  .accent-row{ display:flex; gap:8px; }
+  .accent-row{ display:flex; gap:8px; flex-wrap: wrap; }
   .accent-swatch{
     width: 36px; height: 36px; border-radius: 10px; border: 2px solid transparent;
     cursor:pointer; position: relative;
@@ -982,6 +990,10 @@
   .accent-swatch[data-a="amber"]{ background: #E8A84A; }
   .accent-swatch[data-a="teal"]{ background: #3DB8AD; }
   .accent-swatch[data-a="violet"]{ background: #9B7EDE; }
+  .accent-swatch[data-a="rose"]{ background: #E37D9A; }
+  .accent-swatch[data-a="sky"]{ background: #5FA8E8; }
+  .accent-swatch[data-a="emerald"]{ background: #4FBE7E; }
+  .accent-swatch[data-a="gold"]{ background: #D8B24C; }
 
 
   @media (max-width: 400px){
@@ -4121,11 +4133,15 @@
             <button class="toggle ${settings.soundEnabled?'on':''}" id="togSound" aria-label="Sound"></button>
           </div>
           <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px">
-            <div><div class="sr-label">Accent color</div><div class="sr-sub">Amber, teal, or violet</div></div>
+            <div><div class="sr-label">Accent color</div><div class="sr-sub">Pick the color used across buttons, highlights, and progress</div></div>
             <div class="accent-row">
               <button type="button" class="accent-swatch ${(settings.accent||'amber')==='amber'?'active':''}" data-a="amber" aria-label="Amber"></button>
               <button type="button" class="accent-swatch ${settings.accent==='teal'?'active':''}" data-a="teal" aria-label="Teal"></button>
               <button type="button" class="accent-swatch ${settings.accent==='violet'?'active':''}" data-a="violet" aria-label="Violet"></button>
+              <button type="button" class="accent-swatch ${settings.accent==='rose'?'active':''}" data-a="rose" aria-label="Rose"></button>
+              <button type="button" class="accent-swatch ${settings.accent==='sky'?'active':''}" data-a="sky" aria-label="Sky"></button>
+              <button type="button" class="accent-swatch ${settings.accent==='emerald'?'active':''}" data-a="emerald" aria-label="Emerald"></button>
+              <button type="button" class="accent-swatch ${settings.accent==='gold'?'active':''}" data-a="gold" aria-label="Gold"></button>
             </div>
           </div>
         </div>
