@@ -2151,7 +2151,18 @@
     });
   }
   if(reduceMotion){ drawBg(0); }
-  else { function loop(t){ drawBg(t); requestAnimationFrame(loop); } requestAnimationFrame(loop); }
+  else {
+    function loop(t){
+      // Skip frames while the tab is hidden (matches other RAF loops in
+      // this file) and while a heavy export is running — html2canvas/jsPDF
+      // work is synchronous-ish and CPU-heavy, and painting full-viewport
+      // gradients on every frame at the same time is what turns a brief
+      // export into a visibly laggy few seconds.
+      if(!document.hidden && !window._exportInFlight) drawBg(t);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
 
   // ============================================================
   // LEVEL-UP FX ENGINE — particles, cursor aura, tilt, confetti,
@@ -4195,6 +4206,7 @@
     const btn = document.getElementById('shareImg');
     const originalLabel = btn ? btn.innerHTML : '';
     if(btn){ btn.disabled = true; btn.innerHTML = `<span class="ai-coach-spin">${ICONS.sparkle}</span> Rendering…`; }
+    window._exportInFlight = true;
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
     host.innerHTML = buildShareCardStandaloneHtml(shareData);
@@ -4220,11 +4232,17 @@
         URL.revokeObjectURL(a.href);
         showToast('Image saved — attach it in WhatsApp/Instagram');
       }
+      // Release the rasterized canvas's backing buffer immediately rather
+      // than waiting on GC — at 2-3x device scale this is a large bitmap
+      // (tens of MB) and letting it linger is what causes the app to feel
+      // sluggish right after an export.
+      canvas.width = 0; canvas.height = 0;
     }catch(err){
       if(err && err.name === 'AbortError'){ /* user cancelled the share sheet — not an error */ }
       else showToast(err.message || 'Could not create image');
     }finally{
       document.body.removeChild(host);
+      window._exportInFlight = false;
       if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
     }
   }
@@ -4384,6 +4402,7 @@
     const btn = document.getElementById('exportWeeklyPdf');
     const originalLabel = btn ? btn.innerHTML : '';
     if(btn){ btn.disabled = true; btn.innerHTML = `<span class="ai-coach-spin">${ICONS.sparkle}</span> Building report…`; }
+    window._exportInFlight = true;
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
     host.innerHTML = buildWeeklyReportHtml(ctx);
@@ -4401,10 +4420,15 @@
       const stamp = new Date().toISOString().slice(0,10);
       pdf.save(`ledger-weekly-report-${stamp}.pdf`);
       showToast('Weekly report downloaded');
+      // Same large-bitmap cleanup as the share-image path — a 2x-scaled
+      // A4 sheet is a sizeable canvas, and freeing it here (rather than
+      // waiting on GC) keeps the app from feeling sluggish afterward.
+      canvas.width = 0; canvas.height = 0;
     }catch(err){
       showToast(err.message || 'Could not build the PDF');
     }finally{
       document.body.removeChild(host);
+      window._exportInFlight = false;
       if(btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
     }
   }
