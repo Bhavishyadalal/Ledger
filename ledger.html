@@ -8030,12 +8030,58 @@
         "Mess food + sleep + reps beats motivation.",
         "The block you skip is the seat you give away.",
         "Small consistent reps beat heroic one-offs.",
-        "Tonight’s honesty is tomorrow’s edge."
+        "Tonight’s honesty is tomorrow’s edge.",
+        "Nobody sees the 6am wake-up. The rank sheet does.",
+        "Motivation fades. The ledger doesn’t care — it just records.",
+        "You don’t need a better mood. You need one more honest hour.",
+        "The syllabus doesn’t know you’re tired. Show up anyway.",
+        "Every skipped question is a mark someone else picked up.",
+        "Average days, repeated, are what beat talent.",
+        "Log it even when it’s ugly. Especially when it’s ugly.",
+        "The seat isn’t won today. It’s won by not losing today.",
+        "Comparison is noise. Your own streak is the only signal.",
+        "Tired is not the same as done. Finish the block.",
+        "Nobody remembers the days you almost studied.",
+        "Consistency is boring on purpose — that’s why it works.",
+        "You’re not behind. You’re exactly where today’s effort put you."
       ];
       function dailyQuote() {
         const d = new Date();
         const i = (d.getFullYear() * 1000 + d.getMonth() * 50 + d.getDate()) % QUOTES.length;
         return QUOTES[i];
+      }
+      // Random quote for Home specifically — a fresh one every time the
+      // user lands on or returns to Home, not just once per calendar day
+      // like dailyQuote() above (which is left as-is for the check-in
+      // welcome screen). Avoids repeating the immediately previous pick so
+      // two visits in a row don't show the same line back-to-back.
+      let _lastHomeQuoteIdx = -1;
+      function randomHomeQuote() {
+        if (QUOTES.length <= 1) return QUOTES[0] || '';
+        let i;
+        do { i = Math.floor(Math.random() * QUOTES.length); } while (i === _lastHomeQuoteIdx);
+        _lastHomeQuoteIdx = i;
+        return QUOTES[i];
+      }
+
+      // Headline shown on Home once today's check-in is already logged —
+      // rotates the same way as the quote line, so returning to Home after
+      // logging doesn't show the identical "Day locked in." every time.
+      const DONE_HEADLINES = [
+        "Day locked in.",
+        "Logged. That’s today handled.",
+        "Today’s in the books.",
+        "Recorded. On to tomorrow.",
+        "Done and dusted for today.",
+        "That’s a wrap on today."
+      ];
+      let _lastDoneHeadlineIdx = -1;
+      function randomDoneHeadline() {
+        if (DONE_HEADLINES.length <= 1) return DONE_HEADLINES[0] || '';
+        let i;
+        do { i = Math.floor(Math.random() * DONE_HEADLINES.length); } while (i === _lastDoneHeadlineIdx);
+        _lastDoneHeadlineIdx = i;
+        return DONE_HEADLINES[i];
       }
 
       const today = new Date();
@@ -8447,7 +8493,7 @@
           <div class="section-icon" style="background:var(--teal-soft);color:var(--teal)">${ICONS.pulse}</div>
           <div class="section-head-text">
             <div class="section-kicker" style="color:var(--teal)">${todayDone ? 'Today logged' : 'Ready for tonight'}</div>
-            <h1 class="section-title">${todayDone ? 'Day locked in.' : 'How did today actually go?'}</h1>
+            <h1 class="section-title">${todayDone ? escapeHtml(randomDoneHeadline()) : 'How did today actually go?'}</h1>
           </div>
         </div>
         <div class="quote-line" id="homeQuote"></div>
@@ -8537,7 +8583,7 @@
         updateStreakChip();
         updateOfflineChip();
         applyDisciplineWeather();
-        typewriterQuote(document.getElementById('homeQuote'), dailyQuote());
+        typewriterQuote(document.getElementById('homeQuote'), randomHomeQuote());
         const nr = document.getElementById('nudgeRow');
         if (nr) {
           const parts = [];
