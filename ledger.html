@@ -414,7 +414,9 @@
     transition: border-color 160ms, transform 140ms var(--ease-spring), box-shadow 160ms;
     box-shadow: var(--shadow-sm);
   }
-  .dash-card:hover{ border-color: var(--text-faint); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  @media (hover: hover) and (pointer: fine){
+    .dash-card:hover{ border-color: var(--text-faint); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  }
   .dash-card .dc-icon{
     width: 36px; height: 36px; border-radius: 10px;
     display:flex; align-items:center; justify-content:center;
@@ -770,7 +772,9 @@
     background: var(--border-soft); cursor: pointer;
     transition: transform 120ms var(--ease-spring);
   }
-  .hm-cell:hover{ transform: scale(1.35); }
+  @media (hover: hover) and (pointer: fine){
+    .hm-cell:hover{ transform: scale(1.35); }
+  }
   .hm-cell.strong{ background: var(--teal); }
   .hm-cell.mixed{ background: var(--amber); }
   .hm-cell.rough{ background: var(--danger); }
@@ -1429,7 +1433,17 @@
     pointer-events:none; z-index:1;
     transition: transform 850ms cubic-bezier(.22,1,.36,1);
   }
-  .shine:hover::before, .shine:focus-visible::before{ transform: rotate(8deg) translateX(160%); }
+  /* :hover-driven fx are gated to real pointer devices (mouse/trackpad).
+     On touchscreens, :hover triggers on tap but has no matching "leave"
+     event to clear it, so the effect used to play once and get stuck
+     until an unrelated tap elsewhere reset it. Touch devices instead
+     get a quick, self-resetting :active/:focus-visible tap response. */
+  @media (hover: hover) and (pointer: fine){
+    .shine:hover::before, .shine:focus-visible::before{ transform: rotate(8deg) translateX(160%); }
+  }
+  @media (hover: none), (pointer: coarse){
+    .shine:active::before{ transform: rotate(8deg) translateX(160%); transition-duration: 320ms; }
+  }
 
   /* Glow ring — animated conic border on hover, used for premium cards */
   .glow-ring{ position:relative; isolation:isolate; }
@@ -1440,13 +1454,24 @@
     filter: blur(6px);
     animation: gr-spin 5s linear infinite paused;
   }
-  .glow-ring:hover::after{ opacity: 0.65; animation-play-state: running; }
+  @media (hover: hover) and (pointer: fine){
+    .glow-ring:hover::after{ opacity: 0.65; animation-play-state: running; }
+  }
   @keyframes gr-spin{ to{ --gr-angle: 360deg; } }
   @property --gr-angle{ syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
   /* Elevated hover lift used broadly */
   .lift-hover{ transition: transform 320ms cubic-bezier(.16,1,.3,1), box-shadow 320ms cubic-bezier(.16,1,.3,1); }
-  .lift-hover:hover{ transform: translateY(-4px) scale(1.012); box-shadow: 0 16px 40px -12px rgba(0,0,0,0.35); }
+  @media (hover: hover) and (pointer: fine){
+    .lift-hover:hover{ transform: translateY(-4px) scale(1.012); box-shadow: 0 16px 40px -12px rgba(0,0,0,0.35); }
+  }
+  @media (hover: none), (pointer: coarse){
+    .lift-hover:active{
+      transform: translateY(-2px) scale(1.006);
+      box-shadow: 0 10px 26px -12px rgba(0,0,0,0.32);
+      transition-duration: 120ms;
+    }
+  }
 
   /* Magnetic button press feedback */
   .magnetic{ transition: transform 220ms cubic-bezier(.34,1.56,.64,1); }
@@ -1511,9 +1536,13 @@
   .setting-row, .q-editor-item, .compare-line, .insight-line, .soft-prompt, .nudge{
     transition: transform 340ms cubic-bezier(.16,1,.3,1), box-shadow 340ms cubic-bezier(.16,1,.3,1), border-color 260ms ease;
   }
-  .stat-box:hover{ transform: translateY(-3px); box-shadow: 0 10px 26px -8px rgba(0,0,0,0.3); border-color: var(--section-accent, var(--amber)); }
+  @media (hover: hover) and (pointer: fine){
+    .stat-box:hover{ transform: translateY(-3px); box-shadow: 0 10px 26px -8px rgba(0,0,0,0.3); border-color: var(--section-accent, var(--amber)); }
+  }
   .dash-card{ will-change: transform; }
-  .chart-wrap:hover, .traj-card:hover, .heatmap-wrap:hover{ box-shadow: 0 12px 30px -10px rgba(0,0,0,0.28); }
+  @media (hover: hover) and (pointer: fine){
+    .chart-wrap:hover, .traj-card:hover, .heatmap-wrap:hover{ box-shadow: 0 12px 30px -10px rgba(0,0,0,0.28); }
+  }
 
   /* Pulsing glow behind streak flame */
   .streak-chip{ position:relative; }
@@ -1572,12 +1601,16 @@
 
   /* Heatmap cell pop-in wave + richer hover */
   .hm-cell{ animation: hmCellIn 420ms cubic-bezier(.34,1.56,.64,1) both; }
-  .hm-cell:hover{ box-shadow: 0 0 8px 1px currentColor; z-index: 2; }
+  @media (hover: hover) and (pointer: fine){
+    .hm-cell:hover{ box-shadow: 0 0 8px 1px currentColor; z-index: 2; }
+  }
   @keyframes hmCellIn{ from{ opacity:0; transform: scale(0.3); } to{ opacity:1; transform: scale(1); } }
 
   /* Week-day / cal-day pop + glow on strong */
   .week-day, .cal-day{ transition: transform 260ms cubic-bezier(.34,1.56,.64,1), box-shadow 260ms ease; }
-  .week-day:hover, .cal-day:hover{ transform: translateY(-2px) scale(1.05); }
+  @media (hover: hover) and (pointer: fine){
+    .week-day:hover, .cal-day:hover{ transform: translateY(-2px) scale(1.05); }
+  }
   .week-day.strong, .cal-day.strong{ box-shadow: 0 0 14px -2px rgba(61,184,173,0.55); }
   .week-day.rough, .cal-day.rough{ box-shadow: 0 0 14px -2px rgba(208,115,88,0.45); }
 
