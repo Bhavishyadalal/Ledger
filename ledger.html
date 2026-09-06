@@ -500,8 +500,15 @@
   .ai-coach-btn:active{ transform: scale(0.97); }
   .ai-coach-btn:disabled{ opacity: 0.55; cursor: not-allowed; }
   .ai-coach-btn svg{ width:15px; height:15px; flex-shrink:0; }
-  .ai-coach-spin{ animation: aiSpin 0.9s linear infinite; }
-  @keyframes aiSpin{ to{ transform: rotate(360deg); } }
+  .ai-coach-spin{
+    display: inline-flex; align-items:center; justify-content:center;
+    width:15px; height:15px; flex-shrink:0;
+    transform-origin: 50% 50%;
+    animation: aiSpin 0.9s linear infinite;
+    will-change: transform;
+  }
+  .ai-coach-spin svg{ width:15px; height:15px; display:block; }
+  @keyframes aiSpin{ from{ transform: rotate(0deg); } to{ transform: rotate(360deg); } }
   .ai-coach-panel{
     background: linear-gradient(180deg, var(--purple-soft), transparent), var(--panel);
     border: 1px solid var(--border-soft); border-radius: var(--radius-m);
@@ -3696,7 +3703,7 @@
     panel.innerHTML = `
       <div class="ai-coach-panel">
         <div class="acp-head">
-          <div class="acp-icon">${ICONS.sparkle}</div>
+          <div class="acp-icon"><span class="ai-coach-spin">${ICONS.sparkle}</span></div>
           <div class="acp-title">AI COACH</div>
         </div>
         <div class="acp-body" style="color:var(--text-faint)">Reading today's check-in…</div>
