@@ -4271,32 +4271,7 @@
   }
 
   // Lazy-loaded QR generator — same pattern as html2canvas/jsPDF above.
-  // Used to stamp a scannable link on the weekly PDF (mentor link if the
-  // student has one set up, otherwise the live app URL).
-  let _qrLoading = null;
-  function loadQr(){
-    if(window.QRCode) return Promise.resolve();
-    if(_qrLoading) return _qrLoading;
-    _qrLoading = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.js';
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Could not load QR renderer — check your connection'));
-      document.head.appendChild(s);
-    });
-    return _qrLoading;
-  }
   const LIVE_APP_URL = 'https://ledger-zeta-nine.vercel.app';
-  // Returns the URL the PDF's QR code should point to: the student's
-  // mentor view link if they've generated one, else the plain app URL.
-  function getPdfQrTarget(){
-    try{
-      const auth = (typeof loadAuth === 'function') ? loadAuth() : null;
-      const cached = auth && auth.userId ? localStorage.getItem('mentorToken:' + auth.userId) : null;
-      if(cached) return LIVE_APP_URL + '/?mentor=' + encodeURIComponent(cached);
-    }catch(e){}
-    return LIVE_APP_URL;
-  }
 
   function buildWeeklyReportHtml(ctx){
     const { days, logged, avgQ, strong, best, worst, subjectCounts, subjTotal, insightHtml } = ctx;
@@ -4423,12 +4398,9 @@
         </div>`).join('')}
       </div>` : ''}
 
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;padding-top:18px;border-top:1px solid #262C48;font-size:11px;color:#6B7295;font-weight:600;">
-        <div>
-          <div>Generated ${escapeHtml(generated)}</div>
-          <div style="font-style:italic;margin-top:2px;">Logged with Ledger</div>
-        </div>
-        <div id="wrQrSlot" style="width:74px;height:74px;display:flex;align-items:center;justify-content:center;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;padding-top:18px;border-top:1px solid #262C48;font-size:11px;color:#6B7295;font-weight:600;">
+        <span>Generated ${escapeHtml(generated)}</span>
+        <span style="font-style:italic;">Logged with Ledger</span>
       </div>
     </div>`;
   }
@@ -4443,22 +4415,8 @@
     host.innerHTML = buildWeeklyReportHtml(ctx);
     document.body.appendChild(host);
     try{
-      await Promise.all([loadHtml2Canvas(), loadJsPdf(), loadQr()]);
+      await Promise.all([loadHtml2Canvas(), loadJsPdf()]);
       const sheet = document.getElementById('weeklyReportSheet');
-      // Stamp a QR code into the footer slot — links to the mentor view
-      // if one exists, otherwise the live app, so a printed page can be
-      // scanned straight into the app.
-      try{
-        const qrSlot = document.getElementById('wrQrSlot');
-        if(qrSlot && window.QRCode){
-          const qrCanvas = document.createElement('canvas');
-          await window.QRCode.toCanvas(qrCanvas, getPdfQrTarget(), {
-            width: 74, margin: 0,
-            color: { dark: '#F1F3FA', light: '#0B0E1A' }
-          });
-          qrSlot.appendChild(qrCanvas);
-        }
-      }catch(qrErr){ /* non-fatal — PDF still builds without the QR */ }
       const canvas = await window.html2canvas(sheet, { backgroundColor: '#0B0E1A', scale: 2 });
       const imgData = canvas.toDataURL('image/png');
       const { jsPDF } = window.jspdf;
@@ -6101,13 +6059,12 @@
   function mentorLinkBodyHtml(token){
     const url = mentorLinkUrl(token);
     return `
-      <div class="auth-account-chip" style="align-items:flex-start;flex-direction:column;gap:8px;">
-        <div style="font-size:12px;color:var(--text-faint);word-break:break-all;font-family:'JetBrains Mono',monospace;">${escapeHtml(url)}</div>
-        <div id="mentorQrWrap" style="width:120px;height:120px;background:#fff;border-radius:10px;padding:8px;display:flex;align-items:center;justify-content:center;"></div>
+      <div class="key-mask-row">
+        <code>${escapeHtml(url)}</code>
+        <button class="btn-admin btn-admin-accent" id="doCopyMentorLink" title="Copy link" style="width:40px;height:40px;padding:0;flex-shrink:0;">${ICONS.copy}</button>
       </div>
-      <div class="navrow" style="margin-top:10px;flex-wrap:wrap">
-        <button class="btn btn-ghost" id="doCopyMentorLink">Copy link</button>
-        <button class="btn btn-ghost" id="doRegenMentorLink">Regenerate (revokes old link)</button>
+      <div class="navrow" style="flex-wrap:wrap">
+        <button class="btn btn-ghost" id="doRegenMentorLink" style="flex:1">Regenerate (revokes old link)</button>
       </div>
     `;
   }
@@ -6124,7 +6081,6 @@
           const body = document.getElementById('mentorLinkBody');
           if(body) body.innerHTML = mentorLinkBodyHtml(data);
           wireMentorSection(userId);
-          renderMentorQr(data);
           showToast('Mentor link ready');
         }catch(err){
           showToast(err.message || 'Could not generate link');
@@ -6133,8 +6089,6 @@
       };
       return;
     }
-    const cached = getCachedMentorToken(userId);
-    if(cached) renderMentorQr(cached);
     const copyBtn = document.getElementById('doCopyMentorLink');
     if(copyBtn){
       copyBtn.onclick = async () => {
@@ -6165,7 +6119,6 @@
           const body = document.getElementById('mentorLinkBody');
           if(body) body.innerHTML = mentorLinkBodyHtml(data);
           wireMentorSection(userId);
-          renderMentorQr(data);
           showToast('New mentor link ready');
         }catch(err){
           showToast(err.message || 'Could not regenerate link');
@@ -6173,18 +6126,6 @@
         }
       };
     }
-  }
-
-  async function renderMentorQr(token){
-    const wrap = document.getElementById('mentorQrWrap');
-    if(!wrap) return;
-    try{
-      await loadQr();
-      wrap.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      await window.QRCode.toCanvas(canvas, mentorLinkUrl(token), { width: 104, margin: 0 });
-      wrap.appendChild(canvas);
-    }catch(e){ wrap.textContent = 'QR unavailable'; }
   }
 
   // ---------- Public mentor view (read-only, no auth) ----------
