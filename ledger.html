@@ -736,22 +736,29 @@
     display:flex; align-items:center; justify-content:center;
   }
   .doubt-preview-remove svg{ width:10px; height:10px; stroke-width:3; }
+  .doubt-msg-imgs{
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 8px;
+  }
   .doubt-msg-img{
-    display:block; width:100%; max-width: 240px; border-radius: 10px; margin-bottom: 8px;
-    border: 1px solid rgba(0,0,0,0.12);
+    display:block; width: 100px; height: 100px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.12); flex-shrink:0;
+  }
+  .doubt-msg-imgs:has(.doubt-msg-img:only-child) .doubt-msg-img{
+    width:100%; height:auto; max-width: 240px; max-height: none; object-fit: contain;
   }
 
-  /* Doubt chat — save-as-flashcard on AI answers */
-  .doubt-msg-actions{ display:flex; gap:8px; margin-top: 10px; }
-  .doubt-save-fc-btn{
+  /* Doubt chat — save-as-flashcard / regenerate on AI answers */
+  .doubt-msg-actions{ display:flex; gap:8px; margin-top: 10px; flex-wrap:wrap; }
+  .doubt-save-fc-btn, .doubt-regen-btn{
     display:inline-flex; align-items:center; gap:6px;
     font-size: 11.5px; font-weight: 700; padding: 6px 11px; border-radius: 100px;
     background: var(--panel-2); border: 1px solid var(--border-soft); color: var(--text-dim);
     cursor:pointer; transition: border-color 140ms, color 140ms;
   }
   .doubt-save-fc-btn:hover{ border-color: var(--purple); color: var(--purple); }
-  .doubt-save-fc-btn svg{ width:12px; height:12px; }
+  .doubt-save-fc-btn svg, .doubt-regen-btn svg{ width:12px; height:12px; }
   .doubt-save-fc-btn.saved{ border-color: var(--teal); color: var(--teal); cursor:default; }
+  .doubt-regen-btn:hover{ border-color: var(--teal); color: var(--teal); }
 
   /* ---------------------------------------------------------------
      Flashcards deck
@@ -777,6 +784,22 @@
   .fc-item .fc-back{ font-size: 13px; color: var(--text-dim); line-height:1.5; margin-top:6px; }
   .fc-item .fc-actions{ display:flex; gap:6px; margin-top:10px; }
 
+  /* Due-count pill next to the card-count pill in the toolbar */
+  .fc-due-pill{
+    font-size: 12px; font-weight: 700; color: var(--text-faint);
+    background: var(--panel); border:1px solid var(--border-soft); border-radius:100px; padding: 6px 12px;
+  }
+  .fc-due-pill.has-due{ color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, var(--border-soft)); }
+
+  /* Header row inside each card: subject label + SRS due/next badge */
+  .fc-item .fc-item-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px; }
+  .fc-item .fc-item-top .fc-subject{ margin-bottom:0; }
+  .fc-srs-badge{
+    font-size: 10.5px; font-weight:700; color: var(--text-faint); white-space:nowrap;
+    background: var(--ink-2); border:1px solid var(--border-soft); border-radius:100px; padding: 3px 9px;
+  }
+  .fc-srs-badge.due{ color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, var(--border-soft)); background: var(--purple-soft); }
+
   /* Flashcard study/flip mode */
   .fc-study-overlay{
     position:fixed; inset:0; z-index:50; background: rgba(4,6,14,0.72); backdrop-filter: blur(6px);
@@ -798,6 +821,7 @@
   }
   .fc-study-face .fc-face-kicker{ font-size:11px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color: var(--text-faint); margin-bottom:14px; }
   .fc-study-face .fc-face-text{ font-family: var(--serif); font-size: 19px; font-weight:500; line-height:1.4; color: var(--text); }
+  .fc-study-face .fc-face-hint{ font-size:11.5px; font-weight:600; color: var(--text-faint); margin-top:16px; }
   .fc-study-face.back{ transform: rotateY(180deg); background: linear-gradient(160deg, var(--purple-soft), var(--panel)); }
   .fc-study-nav{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top: 22px; width:100%; max-width:420px; }
   .fc-study-nav-btn{
@@ -811,6 +835,79 @@
     border:1px solid var(--border-soft); background: var(--panel); color: var(--text-dim);
     cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
+
+  /* Again/Good/Easy rating row, shown once a study card is flipped */
+  .fc-rate-row{ display:flex; gap:8px; margin-top: 16px; width:100%; max-width:420px; }
+  .fc-rate-btn{
+    flex:1; border:1px solid var(--border-soft); background: var(--panel); border-radius: var(--radius-m);
+    padding: 11px 8px; font-size:13px; font-weight:700; cursor:pointer; transition: border-color 140ms, background-color 140ms;
+    color: var(--text-dim);
+  }
+  .fc-rate-btn.again{ color: var(--danger); }
+  .fc-rate-btn.again:hover, .fc-rate-btn.again:active{ border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--panel)); }
+  .fc-rate-btn.good{ color: var(--teal); }
+  .fc-rate-btn.good:hover, .fc-rate-btn.good:active{ border-color: var(--teal); background: color-mix(in srgb, var(--teal) 12%, var(--panel)); }
+  .fc-rate-btn.easy{ color: var(--purple); }
+  .fc-rate-btn.easy:hover, .fc-rate-btn.easy:active{ border-color: var(--purple); background: color-mix(in srgb, var(--purple) 12%, var(--panel)); }
+
+  /* "All caught up" completion state inside the study overlay */
+  .fc-study-done{
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;
+    color: var(--text-dim); font-size:14px; max-width: 320px; padding: 20px;
+  }
+  .fc-study-done .es-icon{
+    width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background: var(--purple-soft); color: var(--purple); margin-bottom:4px;
+  }
+  .fc-study-done .es-icon svg{ width:24px; height:24px; }
+
+  /* Doubt search overlay */
+  .doubt-search-overlay{
+    position:fixed; inset:0; z-index:50; background: rgba(4,6,14,0.72); backdrop-filter: blur(6px);
+    display:flex; align-items:flex-start; justify-content:center; padding: 40px 16px;
+    overflow-y:auto;
+  }
+  .doubt-search-panel{
+    width:100%; max-width: 480px; background: var(--panel); border:1px solid var(--border-soft);
+    border-radius: var(--radius-l); box-shadow: var(--shadow-md); padding: 14px;
+    display:flex; flex-direction:column; max-height: calc(100vh - 80px);
+  }
+  .doubt-search-head{ display:flex; align-items:center; gap:8px; flex-shrink:0; margin-bottom:10px; }
+  .doubt-search-field{
+    flex:1; display:flex; align-items:center; gap:8px; min-width:0;
+    background: var(--panel-2); border:1px solid var(--border-soft); border-radius: 100px;
+    padding: 9px 14px; color: var(--text-faint);
+  }
+  .doubt-search-field svg{ width:16px; height:16px; flex-shrink:0; }
+  .doubt-search-field input{
+    flex:1; min-width:0; background:transparent; border:none; color: var(--text);
+    font-family: var(--sans); font-size: 14px;
+  }
+  .doubt-search-field input:focus{ outline:none; }
+  .doubt-search-field input::placeholder{ color: var(--text-faint); }
+  .doubt-search-close{
+    flex-shrink:0; width:36px; height:36px; border-radius:10px;
+    border:1px solid var(--border-soft); background: var(--panel-2); color: var(--text-dim);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .doubt-search-close svg{ width:15px; height:15px; }
+  .doubt-search-results{ overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .doubt-search-item{
+    background: var(--panel-2); border:1px solid var(--border-soft); border-radius: var(--radius-m);
+    padding: 11px 12px; cursor:pointer; transition: border-color 140ms;
+  }
+  .doubt-search-item:hover{ border-color: var(--purple); }
+  .doubt-search-item .dsi-q{ font-size:13.5px; font-weight:700; color: var(--text); margin-bottom:4px; display:flex; align-items:center; gap:5px; }
+  .doubt-search-item .dsi-q svg{ width:12px; height:12px; flex-shrink:0; color: var(--text-faint); }
+  .doubt-search-item .dsi-a{ font-size:12.5px; color: var(--text-dim); line-height:1.45; }
+  .doubt-search-item .dsi-meta{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; font-size:11px; color: var(--text-faint); font-weight:600; }
+  .dsi-del{ background:none; border:none; color: var(--text-faint); cursor:pointer; padding:4px; display:flex; }
+  .dsi-del:hover{ color: var(--danger); }
+  .dsi-del svg{ width:13px; height:13px; }
+  .doubt-search-detail-panel{ max-width: 560px; }
+  .dsd-title{ font-family: var(--serif); font-size:17px; font-weight:600; line-height:1.35; flex:1; display:flex; align-items:center; gap:7px; }
+  .dsd-title svg{ width:15px; height:15px; flex-shrink:0; color: var(--text-faint); }
+  .doubt-search-detail-body{ overflow-y:auto; font-size:14px; line-height:1.6; }
 
   /* ---------------------------------------------------------------
      Notes / formula quick-reference sheet
@@ -838,8 +935,20 @@
   .note-item .note-title{ font-size: 14.5px; font-weight:700; color: var(--text); letter-spacing:-0.01em; }
   .note-item .note-body{
     font-size: 13px; color: var(--text-dim); line-height:1.5; margin-top:5px;
-    white-space: pre-wrap; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+    overflow:hidden; max-height: 62px; position: relative;
   }
+  .note-item .note-body::after{
+    content:''; position:absolute; left:0; right:0; bottom:0; height:18px;
+    background: linear-gradient(to bottom, transparent, var(--panel));
+  }
+  .note-item .note-body p{ margin:0 0 4px; }
+  .note-item .note-body p:last-child{ margin-bottom:0; }
+  .note-item .note-body .acp-heading{ font-size:12.5px; font-weight:700; color: var(--text); margin: 6px 0 3px; }
+  .note-item .note-body .acp-heading:first-child{ margin-top:0; }
+  .note-item .note-body .acp-heading strong{ color: var(--amber); }
+  .note-item .note-body strong{ color: var(--text); }
+  .note-item .note-body .acp-list{ margin: 0 0 4px; padding-left: 16px; }
+  .note-item .note-body .acp-list li{ margin-bottom: 2px; }
   .note-editor textarea.freetext{ min-height: 200px; font-family: var(--mono); font-size: 13.5px; }
 
   /* While the doubt-chat keyboard is open, the fixed bottom-nav would
@@ -2424,7 +2533,8 @@
     notebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h6M9 11h6"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>',
-    arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>'
+    arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>'
   };
 
   function sectionIcon(section){
@@ -2958,13 +3068,57 @@
   }
   function addFlashcard(entry){
     const list = loadFlashcards();
-    const card = Object.assign({ id: 'fc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7), createdAt: Date.now(), dateKey: todayKey }, entry);
+    const card = Object.assign({
+      id: 'fc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      createdAt: Date.now(),
+      dateKey: todayKey,
+      // Spaced-repetition state (simplified SM-2): every new card starts
+      // due immediately with a 1-day interval and a neutral ease factor.
+      srsDue: Date.now(),
+      srsInterval: 1,
+      srsEase: 2.5
+    }, entry);
     list.unshift(card);
+    saveFlashcards(list);
+    return card;
+  }
+  function updateFlashcard(id, fields){
+    const list = loadFlashcards();
+    const card = list.find(c => c.id === id);
+    if(!card) return null;
+    Object.assign(card, fields);
     saveFlashcards(list);
     return card;
   }
   function deleteFlashcard(id){
     saveFlashcards(loadFlashcards().filter(c => c.id !== id));
+  }
+
+  // ---------- Flashcard spaced repetition ----------
+  // Deliberately simplified SM-2: three ratings (again/good/easy) instead
+  // of SM-2's 0-5 scale, since that's all a phone-tappable study flow
+  // needs. "Again" always resets to due-tomorrow so a shaky card comes
+  // back fast; "Good"/"Easy" grow the interval, with easy growing it
+  // faster and bumping the ease factor a little.
+  function fcIsDue(card){
+    return !card.srsDue || card.srsDue <= Date.now();
+  }
+  function fcRateCard(card, rating){
+    let interval = card.srsInterval || 1;
+    let ease = card.srsEase || 2.5;
+    if(rating === 'again'){
+      interval = 1;
+      ease = Math.max(1.3, ease - 0.2);
+    } else if(rating === 'good'){
+      interval = Math.max(1, Math.round(interval * ease));
+      ease = ease;
+    } else if(rating === 'easy'){
+      interval = Math.max(1, Math.round(interval * ease * 1.3));
+      ease = ease + 0.15;
+    }
+    const dueAt = Date.now() + interval * 24 * 60 * 60 * 1000;
+    updateFlashcard(card.id, { srsInterval: interval, srsEase: ease, srsDue: dueAt, lastReviewedAt: Date.now(), lastRating: rating });
+    return { interval, ease, dueAt };
   }
 
   // ---------- Formula / notes quick-reference sheet ----------
@@ -3007,6 +3161,49 @@
     if(!bucket || !Array.isArray(bucket[subject])) return;
     bucket[subject] = bucket[subject].filter(n => n.id !== id);
     saveNotesStore(store);
+  }
+
+  // ---------- Doubt history log ----------
+  // The live doubt chat session itself is intentionally ephemeral (see
+  // doubtMessages above), but students still want to find a doubt they
+  // solved last week. This is a separate, lightweight append-only log of
+  // just the Q/A text pairs (no images, to keep storage small) that
+  // powers the search-past-doubts feature — distinct from the session
+  // transcript, and capped so it can't grow unbounded.
+  const DOUBT_LOG_KEY = 'ledgerDoubtLog';
+  const DOUBT_LOG_MAX = 200;
+  function loadDoubtLog(){
+    try{ const raw = JSON.parse(localStorage.getItem(DOUBT_LOG_KEY)); return Array.isArray(raw) ? raw : []; }
+    catch(e){ return []; }
+  }
+  function saveDoubtLog(list){
+    try{ localStorage.setItem(DOUBT_LOG_KEY, JSON.stringify(list.slice(0, DOUBT_LOG_MAX))); }catch(e){}
+  }
+  function logDoubtExchange(question, answer, hadImages){
+    const q = (question || '').trim();
+    const a = (answer || '').trim();
+    if(!q && !hadImages) return; // nothing searchable to log
+    if(!a) return;
+    const list = loadDoubtLog();
+    list.unshift({
+      id: 'dlog_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      question: q || (hadImages ? 'Attached problem photo' : ''),
+      answer: a,
+      hadImages: !!hadImages,
+      createdAt: Date.now()
+    });
+    saveDoubtLog(list);
+  }
+  function deleteDoubtLogEntry(id){
+    saveDoubtLog(loadDoubtLog().filter(e => e.id !== id));
+  }
+  function searchDoubtLog(query){
+    const q = query.trim().toLowerCase();
+    const list = loadDoubtLog();
+    if(!q) return list;
+    return list.filter(e =>
+      e.question.toLowerCase().includes(q) || e.answer.toLowerCase().includes(q)
+    );
   }
 
   // ========== Exam type (NEET / JEE) ==========
@@ -3518,6 +3715,14 @@
       }
       if(document.getElementById('fcStudyOverlay')){
         document.getElementById('fcStudyOverlay').remove();
+        return;
+      }
+      if(document.getElementById('doubtSearchDetailOverlay')){
+        document.getElementById('doubtSearchDetailOverlay').remove();
+        return;
+      }
+      if(document.getElementById('doubtSearchOverlay')){
+        document.getElementById('doubtSearchOverlay').remove();
         return;
       }
       if(s.kind === 'home'){
@@ -4740,7 +4945,10 @@
 
   function doubtBubbleHtml(msg, idx){
     if(msg.role === 'user'){
-      const imgHtml = msg.image ? `<img class="doubt-msg-img" src="${msg.image}" alt="Attached problem photo">` : '';
+      const imgs = msg.images && msg.images.length ? msg.images : (msg.image ? [msg.image] : []);
+      const imgHtml = imgs.length
+        ? `<div class="doubt-msg-imgs">${imgs.map(src => `<img class="doubt-msg-img" src="${src}" alt="Attached problem photo">`).join('')}</div>`
+        : '';
       const textHtml = msg.content ? escapeHtml(msg.content) : '';
       return `<div class="doubt-msg user"><div class="doubt-bubble">${imgHtml}${textHtml}</div></div>`;
     }
@@ -4748,7 +4956,12 @@
       return `<div class="doubt-msg ai" data-pending="1"><div class="doubt-bubble"><div class="doubt-typing"><i></i><i></i><i></i></div></div></div>`;
     }
     if(msg.error){
-      return `<div class="doubt-msg ai"><div class="doubt-bubble doubt-error-bubble">${escapeHtml(msg.content)}</div></div>`;
+      return `<div class="doubt-msg ai">
+        <div class="doubt-bubble doubt-error-bubble">${escapeHtml(msg.content)}</div>
+        <div class="doubt-msg-actions">
+          <button type="button" class="doubt-regen-btn" data-idx="${idx}">${ICONS.history} Try again</button>
+        </div>
+      </div>`;
     }
     const savedLabel = msg.savedFlashcardId
       ? `${ICONS.check} Saved`
@@ -4758,6 +4971,7 @@
         <div class="acp-body">${renderAiReply(msg.content)}</div>
         <div class="doubt-msg-actions">
           <button type="button" class="doubt-save-fc-btn${msg.savedFlashcardId ? ' saved' : ''}" data-idx="${idx}" ${msg.savedFlashcardId ? 'disabled' : ''}>${savedLabel}</button>
+          <button type="button" class="doubt-regen-btn" data-idx="${idx}" title="Regenerate answer">${ICONS.history} Regenerate</button>
         </div>
       </div>
     </div>`;
@@ -4779,6 +4993,9 @@
       if(btn.disabled) return;
       btn.onclick = () => saveDoubtAnswerAsFlashcard(Number(btn.dataset.idx));
     });
+    scrollEl.querySelectorAll('.doubt-regen-btn').forEach(btn => {
+      btn.onclick = () => regenerateDoubtAnswer(Number(btn.dataset.idx));
+    });
   }
 
   // Builds a flashcard from a doubt exchange: front = the student's
@@ -4794,7 +5011,7 @@
     }
     const front = (userMsg && userMsg.content && userMsg.content.trim())
       ? userMsg.content.trim().slice(0, 200)
-      : (userMsg && userMsg.image ? 'Attached problem photo' : 'Doubt chat question');
+      : (userMsg && ((userMsg.images && userMsg.images.length) || userMsg.image) ? 'Attached problem photo' : 'Doubt chat question');
     // Strip markdown-ish formatting for the flashcard back so it reads
     // clean on a study card instead of showing raw ** and headings.
     const back = aiMsg.content
@@ -4808,7 +5025,9 @@
     showToast('Saved to Flashcards');
   }
 
-  let doubtPendingImage = null; // { dataUrl } — staged photo attachment, cleared on send/remove
+  let doubtPendingImage = null; // { dataUrl } — staged photo attachment, cleared on send/remove (deprecated single-image, kept for back-compat)
+  let doubtPendingImages = []; // [{ dataUrl }] — up to DOUBT_MAX_IMAGES staged photos, cleared on send/remove
+  const DOUBT_MAX_IMAGES = 3;
   let _doubtDocPasteHandler = null; // tracks the document-level paste listener so re-renders don't stack duplicates
 
   function renderDoubt(){
@@ -4821,6 +5040,7 @@
             <div class="doubt-head-title">Doubt</div>
             <div class="doubt-head-sub">${cfg.label} study doubts only · Physics, Chemistry &amp; ${cfg.subjects[cfg.subjects.length-1]}</div>
           </div>
+          <button type="button" class="doubt-clear-btn" id="doubtSearchBtn" aria-label="Search past doubts" title="Search past doubts">${ICONS.search}</button>
           <button type="button" class="doubt-clear-btn" id="doubtNotesBtn" aria-label="Notes" title="Formula/notes sheet">${ICONS.notebook}</button>
           <button type="button" class="doubt-clear-btn" id="doubtFlashcardsBtn" aria-label="Flashcards" title="Flashcards">${ICONS.layers}</button>
           <button type="button" class="doubt-clear-btn" id="doubtClearBtn" aria-label="Clear chat" title="Clear chat">${ICONS.x}</button>
@@ -4830,7 +5050,7 @@
           <div class="doubt-preview-row" id="doubtPreviewRow" style="display:none"></div>
           <div class="doubt-input-row">
             <button type="button" class="doubt-attach-btn" id="doubtAttachBtn" aria-label="Attach photo" title="Attach a photo of the problem">${ICONS.camera}</button>
-            <input type="file" id="doubtFileInput" accept="image/*" capture="environment" style="display:none">
+            <input type="file" id="doubtFileInput" accept="image/*" capture="environment" multiple style="display:none">
             <textarea class="doubt-input" id="doubtInput" rows="1" placeholder="Ask a study doubt…" maxlength="800"></textarea>
             <button type="button" class="doubt-send-btn" id="doubtSendBtn" aria-label="Send" disabled>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
@@ -4840,7 +5060,7 @@
         <div class="doubt-hint">Answers cover ${cfg.label} academics only. Tip: paste (Ctrl/Cmd+V) or drop an image to attach it.</div>
       </div>
     `;
-    doubtPendingImage = null;
+    doubtPendingImages = [];
     renderDoubtMessages();
 
     const input = document.getElementById('doubtInput');
@@ -4851,7 +5071,7 @@
     const previewRow = document.getElementById('doubtPreviewRow');
 
     function refreshSendEnabled(){
-      sendBtn.disabled = (!input.value.trim() && !doubtPendingImage) || doubtInFlight;
+      sendBtn.disabled = (!input.value.trim() && !doubtPendingImages.length) || doubtInFlight;
     }
     function autoGrow(){
       input.style.height = 'auto';
@@ -4866,10 +5086,41 @@
     });
     sendBtn.onclick = () => sendDoubtMessage(input.value);
 
-    attachBtn.onclick = () => fileInput.click();
+    attachBtn.onclick = () => {
+      if(doubtPendingImages.length >= DOUBT_MAX_IMAGES){
+        showToast(`You can attach up to ${DOUBT_MAX_IMAGES} images per message`);
+        return;
+      }
+      fileInput.click();
+    };
+
+    function renderDoubtPreviewRow(){
+      if(!doubtPendingImages.length){
+        previewRow.style.display = 'none';
+        previewRow.innerHTML = '';
+        return;
+      }
+      previewRow.style.display = 'flex';
+      previewRow.innerHTML = doubtPendingImages.map((img, i) => `
+        <div class="doubt-preview-chip">
+          <img src="${img.dataUrl}" alt="Attached photo preview ${i+1}">
+          <button type="button" class="doubt-preview-remove" data-i="${i}" aria-label="Remove photo">${ICONS.x}</button>
+        </div>`).join('');
+      previewRow.querySelectorAll('.doubt-preview-remove').forEach(btn => {
+        btn.onclick = () => {
+          doubtPendingImages.splice(Number(btn.dataset.i), 1);
+          renderDoubtPreviewRow();
+          refreshSendEnabled();
+        };
+      });
+    }
 
     function handleDoubtImageFile(file){
       if(!file) return;
+      if(doubtPendingImages.length >= DOUBT_MAX_IMAGES){
+        showToast(`You can attach up to ${DOUBT_MAX_IMAGES} images per message`);
+        return;
+      }
       if(!file.type.startsWith('image/')){
         showToast('Please choose an image file');
         return;
@@ -4880,19 +5131,8 @@
       }
       const reader = new FileReader();
       reader.onload = () => {
-        doubtPendingImage = { dataUrl: reader.result };
-        previewRow.style.display = 'flex';
-        previewRow.innerHTML = `
-          <div class="doubt-preview-chip">
-            <img src="${reader.result}" alt="Attached photo preview">
-            <button type="button" class="doubt-preview-remove" id="doubtRemovePreview" aria-label="Remove photo">${ICONS.x}</button>
-          </div>`;
-        document.getElementById('doubtRemovePreview').onclick = () => {
-          doubtPendingImage = null;
-          previewRow.style.display = 'none';
-          previewRow.innerHTML = '';
-          refreshSendEnabled();
-        };
+        doubtPendingImages.push({ dataUrl: reader.result });
+        renderDoubtPreviewRow();
         refreshSendEnabled();
       };
       reader.onerror = () => showToast('Could not read that image — try again');
@@ -4900,9 +5140,9 @@
     }
 
     fileInput.addEventListener('change', () => {
-      const file = fileInput.files && fileInput.files[0];
+      const files = fileInput.files ? Array.from(fileInput.files) : [];
       fileInput.value = '';
-      handleDoubtImageFile(file);
+      files.forEach(handleDoubtImageFile);
     });
 
     // Paste a screenshot or copied image straight into the doubt box —
@@ -4910,16 +5150,16 @@
     function handleDoubtPaste(e){
       const items = (e.clipboardData || window.clipboardData) && (e.clipboardData || window.clipboardData).items;
       if(!items) return;
-      let imageFile = null;
+      const imageFiles = [];
       for(const item of items){
         if(item.kind === 'file' && item.type.startsWith('image/')){
-          imageFile = item.getAsFile();
-          break;
+          const f = item.getAsFile();
+          if(f) imageFiles.push(f);
         }
       }
-      if(imageFile){
+      if(imageFiles.length){
         e.preventDefault();
-        handleDoubtImageFile(imageFile);
+        imageFiles.forEach(handleDoubtImageFile);
       }
     }
     input.addEventListener('paste', handleDoubtPaste);
@@ -4940,8 +5180,8 @@
     _doubtDocPasteHandler = docLevelDoubtPaste;
     document.addEventListener('paste', docLevelDoubtPaste);
 
-    // Drag-and-drop an image file onto the input bar — same idea as paste,
-    // for desktop users dragging a screenshot in from their file manager.
+    // Drag-and-drop image files onto the input bar — same idea as paste,
+    // for desktop users dragging screenshots in from their file manager.
     const inputBar = document.getElementById('doubtInputbar');
     if(inputBar){
       let dragDepth = 0;
@@ -4963,8 +5203,8 @@
         e.preventDefault();
         dragDepth = 0;
         inputBar.classList.remove('drag-over');
-        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if(file) handleDoubtImageFile(file);
+        const files = e.dataTransfer && e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+        files.forEach(handleDoubtImageFile);
       });
     }
 
@@ -4982,6 +5222,7 @@
     };
     document.getElementById('doubtFlashcardsBtn').onclick = () => goView('flashcards');
     document.getElementById('doubtNotesBtn').onclick = () => goView('notes');
+    document.getElementById('doubtSearchBtn').onclick = () => openDoubtSearch();
 
     wireDoubtKeyboardHandling(input);
   }
@@ -5055,25 +5296,48 @@
 
   async function sendDoubtMessage(text){
     text = (text || '').trim();
-    const image = doubtPendingImage;
-    if((!text && !image) || doubtInFlight) return;
+    const images = doubtPendingImages.slice();
+    if((!text && !images.length) || doubtInFlight) return;
 
     const input = document.getElementById('doubtInput');
     const sendBtn = document.getElementById('doubtSendBtn');
     const previewRow = document.getElementById('doubtPreviewRow');
 
-    doubtMessages.push({ role: 'user', content: text, image: image ? image.dataUrl : null });
+    doubtMessages.push({ role: 'user', content: text, images: images.map(img => img.dataUrl) });
     if(input){ input.value = ''; input.style.height = 'auto'; }
     if(sendBtn) sendBtn.disabled = true;
-    doubtPendingImage = null;
+    doubtPendingImages = [];
     if(previewRow){ previewRow.style.display = 'none'; previewRow.innerHTML = ''; }
     renderDoubtMessages();
 
     const pendingMsg = { role: 'assistant', content: '', pending: true };
     doubtMessages.push(pendingMsg);
     renderDoubtMessages();
-    doubtInFlight = true;
+    await runDoubtCompletion(pendingMsg);
+  }
 
+  // Re-runs the AI request for an existing assistant message (idx), using
+  // the same conversation up to that point. Used for both a failed/error
+  // reply's "Try again" and a normal reply's "Regenerate" action.
+  async function regenerateDoubtAnswer(aiIdx){
+    if(doubtInFlight) return;
+    const msg = doubtMessages[aiIdx];
+    if(!msg || msg.role !== 'assistant') return;
+    msg.content = '';
+    msg.pending = true;
+    msg.error = false;
+    delete msg.savedFlashcardId;
+    renderDoubtMessages();
+    await runDoubtCompletion(msg);
+  }
+
+  // Shared streaming-completion call: sends the full conversation up to
+  // and including whatever is already in doubtMessages (excluding any
+  // pending placeholders), and fills pendingMsg.content with the reply
+  // (or an error message) when done. Both a fresh send and a regenerate
+  // use this so the request/parsing logic only lives in one place.
+  async function runDoubtCompletion(pendingMsg){
+    doubtInFlight = true;
     try{
       const auth = loadAuth();
       if(!auth || !auth.userId) throw new Error('Sign in to use Doubt chat');
@@ -5085,20 +5349,21 @@
       const endpoint = cfg.ai_endpoint;
 
       // Full running conversation (system prompt + prior turns, excluding
-      // the pending placeholder) so the model keeps context turn to turn —
-      // same pattern as sending full history on every /v1/messages call.
-      // A message with an attached photo is sent as multipart content
-      // (text block + image_url block, OpenAI-vision-style) instead of a
-      // plain string — glm-5.3-flash accepts this shape via the same
-      // OpenAI-compatible endpoint the text-only calls already use.
+      // any pending/in-flight placeholder) so the model keeps context turn
+      // to turn — same pattern as sending full history on every
+      // /v1/messages call. A message with attached photos is sent as
+      // multipart content (text block + image_url blocks per photo,
+      // OpenAI-vision-style) instead of a plain string — glm-5.3-flash
+      // accepts this shape via the same OpenAI-compatible endpoint the
+      // text-only calls already use.
       const history = doubtMessages
-        .filter(m => !m.pending)
+        .filter(m => m !== pendingMsg && !m.pending)
         .map(m => {
-          if(m.role === 'user' && m.image){
+          if(m.role === 'user' && m.images && m.images.length){
             const parts = [];
             if(m.content) parts.push({ type: 'text', text: m.content });
-            else parts.push({ type: 'text', text: 'Please look at this photo and help with the problem shown.' });
-            parts.push({ type: 'image_url', image_url: { url: m.image } });
+            else parts.push({ type: 'text', text: m.images.length > 1 ? 'Please look at these photos and help with the problem shown.' : 'Please look at this photo and help with the problem shown.' });
+            m.images.forEach(dataUrl => parts.push({ type: 'image_url', image_url: { url: dataUrl } }));
             return { role: 'user', content: parts };
           }
           return { role: m.role, content: m.content };
@@ -5167,6 +5432,19 @@
 
       pendingMsg.content = reply;
       pendingMsg.pending = false;
+      // Find the user message this answer responds to (the nearest prior
+      // user turn) so the searchable log has real question text, not just
+      // the answer in isolation.
+      const msgIdxInArr = doubtMessages.indexOf(pendingMsg);
+      let precedingUser = null;
+      for(let i = msgIdxInArr - 1; i >= 0; i--){
+        if(doubtMessages[i].role === 'user'){ precedingUser = doubtMessages[i]; break; }
+      }
+      logDoubtExchange(
+        precedingUser ? precedingUser.content : '',
+        reply,
+        !!(precedingUser && ((precedingUser.images && precedingUser.images.length) || precedingUser.image))
+      );
     }catch(err){
       pendingMsg.content = `Couldn't get a response right now (${err.message || 'unknown error'}). Try again in a bit.`;
       pendingMsg.pending = false;
@@ -5180,6 +5458,111 @@
     }
   }
 
+  // ---------- Doubt search overlay ----------
+  // Lets a student find a doubt they solved earlier, without having to
+  // keep the whole session open (the live chat itself stays ephemeral —
+  // see the doubtMessages comment above). Backed by the small append-only
+  // DOUBT_LOG_KEY log written each time an answer completes successfully.
+  function openDoubtSearch(){
+    const overlay = document.createElement('div');
+    overlay.className = 'doubt-search-overlay';
+    overlay.id = 'doubtSearchOverlay';
+    overlay.innerHTML = `
+      <div class="doubt-search-panel">
+        <div class="doubt-search-head">
+          <div class="doubt-search-field">
+            ${ICONS.search}
+            <input type="text" id="doubtSearchInput" placeholder="Search your past doubts…" maxlength="200">
+          </div>
+          <button type="button" class="doubt-search-close" id="doubtSearchCloseBtn" aria-label="Close">${ICONS.x}</button>
+        </div>
+        <div class="doubt-search-results" id="doubtSearchResults"></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    navPush({ kind: 'modal' });
+
+    const input = document.getElementById('doubtSearchInput');
+    const resultsEl = document.getElementById('doubtSearchResults');
+
+    function renderResults(){
+      const q = input.value;
+      const results = searchDoubtLog(q);
+      if(!results.length){
+        resultsEl.innerHTML = `<div class="empty-state">
+          <div class="es-icon">${ICONS.search}</div>
+          <p>${q.trim() ? 'No past doubts match that search.' : 'Solved doubts will show up here as you use the Doubt chat.'}</p>
+        </div>`;
+        return;
+      }
+      resultsEl.innerHTML = results.map(e => `
+        <div class="doubt-search-item" data-id="${escapeAttr(e.id)}">
+          <div class="dsi-q">${e.hadImages ? ICONS.camera + ' ' : ''}${escapeHtml(e.question || 'Attached problem photo')}</div>
+          <div class="dsi-a">${escapeHtml(e.answer.slice(0, 160))}${e.answer.length > 160 ? '…' : ''}</div>
+          <div class="dsi-meta">
+            <span>${new Date(e.createdAt).toLocaleDateString(undefined,{ day:'numeric', month:'short' })}</span>
+            <button type="button" class="dsi-del" data-id="${escapeAttr(e.id)}" aria-label="Delete">${ICONS.trash}</button>
+          </div>
+        </div>
+      `).join('');
+      resultsEl.querySelectorAll('.doubt-search-item').forEach(el => {
+        el.onclick = (e) => {
+          if(e.target.closest('.dsi-del')) return;
+          const entry = results.find(r => r.id === el.dataset.id);
+          if(entry) openDoubtSearchDetail(entry);
+        };
+      });
+      resultsEl.querySelectorAll('.dsi-del').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const ok = await appConfirm({ title: 'Delete this from your doubt history?', body: 'This cannot be undone.', okLabel: 'Delete', danger: true });
+          if(!ok) return;
+          deleteDoubtLogEntry(btn.dataset.id);
+          renderResults();
+        };
+      });
+    }
+    input.addEventListener('input', renderResults);
+    renderResults();
+    setTimeout(() => input.focus(), 50);
+
+    document.getElementById('doubtSearchCloseBtn').onclick = () => closeDoubtSearch();
+    overlay.onclick = (e) => { if(e.target === overlay) closeDoubtSearch(); };
+  }
+
+  function closeDoubtSearch(){
+    const overlay = document.getElementById('doubtSearchOverlay');
+    if(overlay) overlay.remove();
+    const detail = document.getElementById('doubtSearchDetailOverlay');
+    if(detail) detail.remove();
+    if(!_navSuppressPush) history.back();
+  }
+
+  // Full-answer detail view for a single past-doubt search result, opened
+  // on top of the search list (kept as a separate small overlay rather
+  // than replacing the list so "back" from it just re-reveals the list).
+  function openDoubtSearchDetail(entry){
+    const overlay = document.createElement('div');
+    overlay.className = 'doubt-search-overlay';
+    overlay.id = 'doubtSearchDetailOverlay';
+    overlay.innerHTML = `
+      <div class="doubt-search-panel doubt-search-detail-panel">
+        <div class="doubt-search-head">
+          <div class="dsd-title">${entry.hadImages ? ICONS.camera + ' ' : ''}${escapeHtml(entry.question || 'Attached problem photo')}</div>
+          <button type="button" class="doubt-search-close" id="doubtSearchDetailCloseBtn" aria-label="Close">${ICONS.x}</button>
+        </div>
+        <div class="doubt-search-detail-body acp-body">${renderAiReply(entry.answer)}</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    navPush({ kind: 'modal' });
+    document.getElementById('doubtSearchDetailCloseBtn').onclick = () => {
+      overlay.remove();
+      if(!_navSuppressPush) history.back();
+    };
+    overlay.onclick = (e) => { if(e.target === overlay){ overlay.remove(); if(!_navSuppressPush) history.back(); } };
+  }
+
   // ---------- Flashcards ----------
   // A personal deck the student builds up by tapping "Save as flashcard"
   // on Doubt-chat answers. Stored permanently (unlike the doubt chat
@@ -5189,6 +5572,7 @@
 
   function renderFlashcards(){
     const cards = loadFlashcards();
+    const dueCount = cards.filter(fcIsDue).length;
     stage.innerHTML = `
       <div class="view-wrap">
         <div class="section-head">
@@ -5198,10 +5582,12 @@
             <div class="section-kicker" style="color:var(--purple)">Saved from Doubt chat</div>
             <h1 class="section-title">Flashcards</h1>
           </div>
+          ${cards.length ? `<button type="button" class="section-back-btn" id="fcExportBtn" aria-label="Export deck" title="Export deck" style="--section-accent:var(--purple)">${ICONS.download}</button>` : ''}
         </div>
         <div class="fc-toolbar">
           <span class="fc-count-pill">${cards.length} card${cards.length===1?'':'s'}</span>
-          ${cards.length ? `<button type="button" class="fc-study-btn" id="fcStudyBtn">${ICONS.sparkle} Study</button>` : ''}
+          ${cards.length ? `<span class="fc-due-pill${dueCount ? ' has-due' : ''}">${dueCount} due</span>` : ''}
+          ${cards.length ? `<button type="button" class="fc-study-btn" id="fcStudyBtn">${ICONS.sparkle} Study${dueCount ? ` (${dueCount})` : ''}</button>` : ''}
         </div>
         ${cards.length ? `<div class="fc-list" id="fcList">${cards.map(fcItemHtml).join('')}</div>` : `
           <div class="empty-state">
@@ -5211,8 +5597,17 @@
       </div>
     `;
     document.getElementById('fcBackBtn').onclick = () => { if(!_navSuppressPush) history.back(); else goView('doubt'); };
+    const exportBtn = document.getElementById('fcExportBtn');
+    if(exportBtn) exportBtn.onclick = () => exportFlashcardDeck(cards);
     const studyBtn = document.getElementById('fcStudyBtn');
-    if(studyBtn) studyBtn.onclick = () => openFlashcardStudy(cards);
+    if(studyBtn) studyBtn.onclick = () => openFlashcardStudy(cards.some(fcIsDue) ? cards.filter(fcIsDue) : cards);
+    document.querySelectorAll('.fc-edit').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const card = cards.find(c => c.id === btn.dataset.id);
+        if(card) openFlashcardEditor(card);
+      };
+    });
     document.querySelectorAll('.fc-del').forEach(btn => {
       btn.onclick = async (e) => {
         e.stopPropagation();
@@ -5225,14 +5620,83 @@
   }
 
   function fcItemHtml(card){
+    const due = fcIsDue(card);
     return `<div class="fc-item">
-      ${card.subject ? `<div class="fc-subject">${escapeHtml(card.subject)}</div>` : ''}
+      <div class="fc-item-top">
+        ${card.subject ? `<div class="fc-subject">${escapeHtml(card.subject)}</div>` : '<div></div>'}
+        <span class="fc-srs-badge${due ? ' due' : ''}">${due ? 'Due now' : 'Next: ' + new Date(card.srsDue).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span>
+      </div>
       <div class="fc-front">${escapeHtml(card.front)}</div>
       <div class="fc-back">${escapeHtml(card.back)}</div>
       <div class="fc-actions">
+        <button type="button" class="h-act fc-edit" data-id="${escapeAttr(card.id)}">${ICONS.edit} Edit</button>
         <button type="button" class="h-act danger fc-del" data-id="${escapeAttr(card.id)}">Delete</button>
       </div>
     </div>`;
+  }
+
+  // Editing an existing flashcard in place, instead of the old
+  // delete-and-resave-from-a-doubt workflow.
+  function openFlashcardEditor(card){
+    openModal(`
+      <h3>Edit flashcard</h3>
+      <div class="auth-field" style="margin-bottom:12px;">
+        <label>Subject (optional)</label>
+        <input type="text" class="freetext" id="fcEditSubject" placeholder="e.g. Physics" maxlength="40" value="${escapeAttr(card.subject || '')}">
+      </div>
+      <div class="auth-field" style="margin-bottom:12px;">
+        <label>Front (question)</label>
+        <textarea class="freetext" id="fcEditFront" maxlength="300" style="min-height:70px;">${escapeHtml(card.front)}</textarea>
+      </div>
+      <div class="auth-field note-editor" style="margin-bottom:6px;">
+        <label>Back (answer)</label>
+        <textarea class="freetext" id="fcEditBack" maxlength="800" style="min-height:120px;">${escapeHtml(card.back)}</textarea>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="dlgCancel">Cancel</button>
+        <button class="btn btn-primary" id="fcEditSaveBtn">Save</button>
+      </div>
+    `);
+    document.getElementById('dlgCancel').onclick = closeModal;
+    document.getElementById('fcEditSaveBtn').onclick = () => {
+      const subject = document.getElementById('fcEditSubject').value.trim();
+      const front = document.getElementById('fcEditFront').value.trim();
+      const back = document.getElementById('fcEditBack').value.trim();
+      if(!front || !back){ showToast('Front and back can\'t be empty'); return; }
+      updateFlashcard(card.id, { subject, front, back });
+      closeModal();
+      renderFlashcards();
+    };
+  }
+
+  // Exports the deck as a plain-text file (front/back per card) so it's
+  // usable outside the app — e.g. pasted into another tool or printed.
+  function exportFlashcardDeck(cards){
+    if(!cards.length) return;
+    const lines = cards.map((c,i) => {
+      const subj = c.subject ? ` [${c.subject}]` : '';
+      return `${i+1}.${subj} Q: ${c.front}\n   A: ${c.back}`;
+    });
+    const text = `Ledger flashcards — ${cards.length} card${cards.length===1?'':'s'}\nExported ${new Date().toLocaleDateString()}\n\n${lines.join('\n\n')}\n`;
+    try{
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flashcards-${todayKey || 'export'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Deck exported');
+    }catch(e){
+      // Fallback for environments where a programmatic download doesn't
+      // fire (e.g. some in-app browsers) — copy to clipboard instead.
+      navigator.clipboard.writeText(text).then(
+        () => showToast('Could not download — copied deck as text instead'),
+        () => showToast('Export failed')
+      );
+    }
   }
 
   function openFlashcardStudy(cards){
@@ -5248,6 +5712,20 @@
   }
 
   function renderFlashcardStudyFrame(overlay){
+    if(!fcStudyDeck.length){
+      // Whole due-deck rated through — small completion state instead of
+      // just silently closing.
+      overlay.innerHTML = `
+        <button type="button" class="fc-study-close" id="fcStudyClose" aria-label="Close">${ICONS.x}</button>
+        <div class="fc-study-done">
+          <div class="es-icon">${ICONS.check}</div>
+          <p>All caught up — no more cards due right now.</p>
+        </div>
+      `;
+      document.getElementById('fcStudyClose').onclick = () => closeFlashcardStudy();
+      overlay.onclick = (e) => { if(e.target === overlay) closeFlashcardStudy(); };
+      return;
+    }
     const card = fcStudyDeck[fcStudyIdx];
     overlay.innerHTML = `
       <button type="button" class="fc-study-close" id="fcStudyClose" aria-label="Close">${ICONS.x}</button>
@@ -5257,6 +5735,7 @@
             <div class="fc-study-face">
               <div class="fc-face-kicker">${card.subject ? escapeHtml(card.subject) : 'Question'}</div>
               <div class="fc-face-text">${escapeHtml(card.front)}</div>
+              <div class="fc-face-hint">Tap to flip</div>
             </div>
             <div class="fc-study-face back">
               <div class="fc-face-kicker">Answer</div>
@@ -5269,6 +5748,11 @@
           <span class="fc-study-progress">${fcStudyIdx+1} / ${fcStudyDeck.length}</span>
           <button type="button" class="fc-study-nav-btn" id="fcNextBtn" aria-label="Next">${ICONS.up}</button>
         </div>
+        <div class="fc-rate-row" id="fcRateRow" style="display:none">
+          <button type="button" class="fc-rate-btn again" data-rating="again">Again</button>
+          <button type="button" class="fc-rate-btn good" data-rating="good">Good</button>
+          <button type="button" class="fc-rate-btn easy" data-rating="easy">Easy</button>
+        </div>
       </div>
     `;
     // rotate the prev/next chevrons to point left/right instead of down/up
@@ -5278,10 +5762,25 @@
     if(nextBtn) nextBtn.querySelector('svg').style.transform = 'rotate(-90deg)';
 
     const studyCard = document.getElementById('fcStudyCard');
-    studyCard.onclick = () => studyCard.classList.toggle('flipped');
+    const rateRow = document.getElementById('fcRateRow');
+    studyCard.onclick = () => {
+      studyCard.classList.toggle('flipped');
+      rateRow.style.display = studyCard.classList.contains('flipped') ? 'flex' : 'none';
+    };
     document.getElementById('fcStudyClose').onclick = () => closeFlashcardStudy();
     prevBtn.onclick = () => { fcStudyIdx = (fcStudyIdx - 1 + fcStudyDeck.length) % fcStudyDeck.length; renderFlashcardStudyFrame(overlay); };
     nextBtn.onclick = () => { fcStudyIdx = (fcStudyIdx + 1) % fcStudyDeck.length; renderFlashcardStudyFrame(overlay); };
+    rateRow.querySelectorAll('.fc-rate-btn').forEach(btn => {
+      btn.onclick = () => {
+        fcRateCard(card, btn.dataset.rating);
+        // Rated cards drop out of this study run (they're not due again
+        // today regardless of rating), so the session naturally shrinks
+        // down to "all caught up" rather than looping the same cards.
+        fcStudyDeck.splice(fcStudyIdx, 1);
+        if(fcStudyIdx >= fcStudyDeck.length) fcStudyIdx = 0;
+        renderFlashcardStudyFrame(overlay);
+      };
+    });
     overlay.onclick = (e) => { if(e.target === overlay) closeFlashcardStudy(); };
   }
 
@@ -5289,6 +5788,9 @@
     const overlay = document.getElementById('fcStudyOverlay');
     if(overlay) overlay.remove();
     if(!_navSuppressPush) history.back();
+    // Refresh the list view underneath (due badges / due count may have
+    // changed from ratings given during this study session).
+    if(currentView === 'flashcards') renderFlashcards();
   }
 
   // ---------- Notes / formula quick-reference sheet ----------
@@ -5336,7 +5838,7 @@
     listEl.innerHTML = notes.map(n => `
       <div class="note-item" data-id="${escapeAttr(n.id)}">
         <div class="note-title">${escapeHtml(n.title || 'Untitled')}</div>
-        <div class="note-body">${escapeHtml(n.body)}</div>
+        <div class="note-body">${renderAiReply(n.body)}</div>
       </div>
     `).join('');
     listEl.querySelectorAll('.note-item').forEach(el => {
