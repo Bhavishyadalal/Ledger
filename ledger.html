@@ -251,9 +251,25 @@
   .stage.stage-leaving > *{
     animation: stageOut 130ms var(--ease-out) forwards;
   }
+  .stage.stage-leaving-left > *{
+    animation: stageOutLeft 160ms var(--ease-out) forwards;
+  }
+  .stage.stage-leaving-right > *{
+    animation: stageOutRight 160ms var(--ease-out) forwards;
+  }
   @keyframes stageOut{ from{ opacity:1; transform: translateY(0); } to{ opacity:0; transform: translateY(-6px); } }
+  @keyframes stageOutLeft{ from{ opacity:1; transform: translateX(0); } to{ opacity:0; transform: translateX(-32px); } }
+  @keyframes stageOutRight{ from{ opacity:1; transform: translateX(0); } to{ opacity:0; transform: translateX(32px); } }
   .qwrap, .view-wrap{ animation: rise 440ms var(--ease-out); }
+  .view-wrap.from-right{ animation: riseFromRight 380ms var(--ease-out); }
+  .view-wrap.from-left{ animation: riseFromLeft 380ms var(--ease-out); }
   @keyframes rise{ from{ opacity:0; transform: translateY(14px); } to{ opacity:1; transform: translateY(0); } }
+  @keyframes riseFromRight{ from{ opacity:0; transform: translateX(36px); } to{ opacity:1; transform: translateX(0); } }
+  @keyframes riseFromLeft{ from{ opacity:0; transform: translateX(-36px); } to{ opacity:1; transform: translateX(0); } }
+  @media (prefers-reduced-motion: reduce){
+    .stage.stage-leaving-left > *, .stage.stage-leaving-right > *,
+    .view-wrap.from-right, .view-wrap.from-left{ animation-duration: 0.01ms !important; }
+  }
   .qwrap.leaving{ animation: fall 190ms cubic-bezier(.4,0,1,1) forwards; }
   @keyframes fall{ from{ opacity:1; transform: translateY(0); } to{ opacity:0; transform: translateY(-10px); } }
 
@@ -3664,19 +3680,39 @@
   // cut with no exit, and switching screens could leave you scrolled to
   // wherever the previous screen happened to be.
   const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
-  function transitionToView(renderFn){
+  const MAIN_TABS = ['home', 'checkin', 'doubt', 'trends', 'monthly', 'settings'];
+  let _tabSwipeDir = null; // set by mobile tab-swipe before calling goView
+  // Optional dir: 'left' | 'right' | null — used by mobile tab swipe for
+  // horizontal slide instead of the default vertical fade. Always falls
+  // back to the vertical exit when reduced-motion is on.
+  let _pendingEnterDir = null;
+  function transitionToView(renderFn, dir){
     const prevHadContent = stage.children.length > 0;
+    const useSlide = dir && !reduceMotionMQ.matches;
     if(reduceMotionMQ.matches || !prevHadContent){
       window.scrollTo(0, 0);
+      _pendingEnterDir = useSlide ? dir : null;
       renderFn();
+      _pendingEnterDir = null;
       return;
     }
-    stage.classList.add('stage-leaving');
+    stage.classList.remove('stage-leaving', 'stage-leaving-left', 'stage-leaving-right');
+    stage.classList.add(useSlide ? (dir === 'left' ? 'stage-leaving-left' : 'stage-leaving-right') : 'stage-leaving');
     window.scrollTo({ top: 0, behavior: 'auto' });
+    const leaveMs = useSlide ? 160 : 130;
     setTimeout(() => {
+      _pendingEnterDir = useSlide ? dir : null;
       renderFn();
-      stage.classList.remove('stage-leaving');
-    }, 130);
+      stage.classList.remove('stage-leaving', 'stage-leaving-left', 'stage-leaving-right');
+      // Tag the new view-wrap so it slides in from the opposite side.
+      if(_pendingEnterDir){
+        const wrap = stage.querySelector('.view-wrap, .qwrap');
+        if(wrap){
+          wrap.classList.add(_pendingEnterDir === 'left' ? 'from-right' : 'from-left');
+        }
+        _pendingEnterDir = null;
+      }
+    }, leaveMs);
   }
 
   // ---------- In-app back/history handling ----------
@@ -3777,6 +3813,8 @@
     // 'checkin' pushes its own more specific state (welcome/question)
     // below, once we know whether it's a fresh start or an edit.
 
+    const swipeDir = _tabSwipeDir;
+    _tabSwipeDir = null;
     transitionToView(() => {
       if(view === 'home') renderHome();
       else if(view === 'checkin'){
@@ -3801,13 +3839,92 @@
     else if(view === 'weekly') renderWeekly();
     else if(view === 'monthly') renderMonthly();
     else if(view === 'settings') renderSettings();
-    });
+    }, swipeDir);
   }
 
   document.getElementById('brandHome').addEventListener('click', () => goView('home'));
   document.querySelectorAll('.bn-btn').forEach(btn => {
     btn.addEventListener('click', () => goView(btn.dataset.view));
   });
+
+  // ---------- Mobile tab swipe (edge-to-edge between bottom-nav views) ----------
+  // Only active on touch / coarse-pointer devices. Swipe left = next tab,
+  // swipe right = previous tab. Skips mid-check-in questions, open overlays,
+  // focused text inputs, and horizontal-scroll regions so it never fights
+  // the existing question-swipe or doubt chat scroll.
+  function isMobileForSwipe(){
+    try{
+      return ('ontouchstart' in window) && (
+        window.matchMedia('(hover: none) and (pointer: coarse)').matches ||
+        window.matchMedia('(max-width: 860px)').matches
+      );
+    }catch(e){ return 'ontouchstart' in window; }
+  }
+
+  function canTabSwipe(){
+    if(!isMobileForSwipe()) return false;
+    if(reduceMotionMQ.matches) return false;
+    if(!MAIN_TABS.includes(currentView)) return false;
+    // Mid check-in (progress bar visible) — leave that to bindQuestionSwipe
+    if(currentView === 'checkin' && progressTrack && progressTrack.style.display !== 'none') return false;
+    // Overlays / sidebar / study mode
+    if(document.querySelector('.sidebar.open, .modal-overlay.open, .fc-study-overlay, .doubt-search-overlay')) return false;
+    if(document.body.classList.contains('doubt-kb-open')) return false;
+    return true;
+  }
+
+  (function wireMobileTabSwipe(){
+    if(!isMobileForSwipe()) return;
+    let sx = 0, sy = 0, tracking = false, locked = false;
+    const THRESH = 72;
+    const RATIO = 1.35; // horizontal must dominate vertical
+
+    function onStart(e){
+      if(!canTabSwipe()) return;
+      if(!e.touches || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const el = e.target;
+      // Don't steal from inputs, textareas, or elements that scroll sideways
+      if(el && (el.closest('input, textarea, select, [contenteditable="true"], .doubt-scroll, .heatmap-scroll, .notes-subject-tabs, .week-grid, .cal-grid'))) return;
+      sx = t.clientX; sy = t.clientY;
+      tracking = true; locked = false;
+    }
+    function onMove(e){
+      if(!tracking || locked || !e.touches || !e.touches[0]) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      // Once clearly vertical, abandon so page scroll stays smooth
+      if(Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 0.9){
+        tracking = false;
+        return;
+      }
+    }
+    function onEnd(e){
+      if(!tracking) return;
+      tracking = false;
+      if(!e.changedTouches || !e.changedTouches[0]) return;
+      if(!canTabSwipe()) return;
+      const dx = e.changedTouches[0].clientX - sx;
+      const dy = e.changedTouches[0].clientY - sy;
+      if(Math.abs(dx) < THRESH || Math.abs(dx) < Math.abs(dy) * RATIO) return;
+      const i = MAIN_TABS.indexOf(currentView);
+      if(i < 0) return;
+      if(dx < 0 && i < MAIN_TABS.length - 1){
+        // swipe left → next tab (content exits left, new enters from right)
+        _tabSwipeDir = 'left';
+        goView(MAIN_TABS[i + 1]);
+      } else if(dx > 0 && i > 0){
+        _tabSwipeDir = 'right';
+        goView(MAIN_TABS[i - 1]);
+      }
+      // clear after goView has consumed it
+      setTimeout(() => { _tabSwipeDir = null; }, 0);
+    }
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    document.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+  })();
   document.getElementById('themeBtn').addEventListener('click', () => {
     settings.theme = settings.theme === 'light' ? 'dark' : 'light';
     document.body.dataset.theme = settings.theme;
@@ -6640,13 +6757,6 @@
           <div class="section-head-text">
             <div class="section-kicker">Settings</div>
             <h1 class="section-title">Tune the system</h1>
-          </div>
-        </div>
-
-        <div class="settings-section" style="margin-bottom:18px">
-          <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:4px;border-top:2.5px solid var(--amber)">
-            <div class="sr-label" style="font-family:var(--serif);font-size:15.5px;font-weight:500;letter-spacing:-0.01em;color:var(--text)">Made by Bhavishya Dalal</div>
-            <div class="sr-sub" style="line-height:1.5">Built with care for NEET &amp; JEE aspirants — one honest check-in at a time.</div>
           </div>
         </div>
 
