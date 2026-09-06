@@ -3426,7 +3426,8 @@
         body: JSON.stringify({
           model,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 500,
+          max_tokens: 2000,
+          reasoning_effort: 'low',
           stream: true
         })
       });
@@ -3444,6 +3445,7 @@
       const dec = new TextDecoder();
       let buf = '';
       let reply = '';
+      let finishReason = '';
       let done = false;
       while(!done){
         const { done: rDone, value } = await reader.read();
@@ -3458,9 +3460,11 @@
           if(payload === '[DONE]'){ done = true; break; }
           try{
             const evt = JSON.parse(payload);
-            const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
-            const piece = (delta && delta.content) || (evt.choices && evt.choices[0] && evt.choices[0].text) || '';
+            const choice = evt.choices && evt.choices[0];
+            const delta = choice && choice.delta;
+            const piece = (delta && delta.content) || (choice && choice.text) || '';
             reply += piece;
+            if(choice && choice.finish_reason) finishReason = choice.finish_reason;
           }catch(e){ /* ignore partial/non-JSON lines */ }
         }
       }
@@ -3475,6 +3479,14 @@
           const json = JSON.parse(wholeText);
           reply = (json.choices && json.choices[0] && (json.choices[0].message?.content || json.choices[0].text)) || '';
         }catch(e){ /* not a single JSON object either */ }
+      }
+
+      // The model can spend its whole token budget "thinking" (reasoning_content)
+      // and get cut off before writing any actual answer — surfaced by the API
+      // as finish_reason: "length" with an empty content. Give a clearer error
+      // for this specific case instead of the generic "Empty response".
+      if(!reply && finishReason === 'length'){
+        throw new Error('AI ran out of tokens while thinking and never wrote an answer. Try again — it usually succeeds on a retry.');
       }
 
       if(!reply) throw new Error('Empty response from AI');
