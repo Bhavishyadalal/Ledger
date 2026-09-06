@@ -12095,6 +12095,11 @@
           setTimeout(() => {
             hideAuthGate();
             showToast(authMode === 'signup' ? 'Account created' : 'Signed in');
+            // Refresh whatever screen is currently open so the newly signed-in
+            // state (username, sync status, etc.) shows immediately instead of
+            // only after navigating away and back.
+            if (currentView === 'settings') renderSettings();
+            else if (currentView === 'home') renderHome();
             syncNow();
           }, 420);
           return;
@@ -12167,6 +12172,8 @@
             forgotScreen.style.display = 'none';
             hideAuthGate();
             showToast('PIN updated — you are signed in');
+            if (currentView === 'settings') renderSettings();
+            else if (currentView === 'home') renderHome();
             syncNow();
           }, 420);
           return;
@@ -12262,6 +12269,7 @@
             if (currentView === 'home') renderHome();
             if (currentView === 'trends') renderTrends();
             if (currentView === 'monthly') renderMonthly();
+            if (currentView === 'settings') renderSettings();
           }
           setLastSync(Date.now());
           setSyncStatus('ok', 'Synced');
