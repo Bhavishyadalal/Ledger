@@ -3359,10 +3359,8 @@
   // api.b.ai blocks direct browser requests (CORS) — confirmed by the
   // "Failed to fetch" behavior. Requests get routed through this proxy
   // instead, which forwards them on to the real endpoint.
-  // ⚠️ UPDATE THIS after deploying your own copy of the proxy (see
-  // ledger-proxy/README.md). The original api-client-candy proxy works
-  // fine when called from its own site, but rejects cross-origin calls
-  // from ledger.html on a different domain — hence the switch.
+  // Points at your own ledger-ai-proxy deployment (fixes the CORS
+  // rejection the old api-client-candy proxy had for cross-origin calls).
   const CORS_PROXY_URL = 'https://ledger-ai-proxy.vercel.app/api/proxy';
 
   function buildAiPrompt(dataBlock){
