@@ -378,7 +378,9 @@
     padding: 14px 22px; border-radius: var(--radius-m); border: none; cursor:pointer;
     transition: transform 140ms var(--ease-spring), opacity 180ms ease, box-shadow 200ms ease, background 200ms ease;
     flex:1; position: relative; overflow: hidden; letter-spacing: -0.01em;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
   .btn:active{ transform: scale(0.97); }
   .btn-primary{
     background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 55%, white));
